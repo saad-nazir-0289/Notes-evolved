@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: light --default;
+}
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --color-brand-50: #edf4ff;
+  --color-brand-100: #dce8ff;
+  --color-brand-500: #3366db;
+  --color-brand-600: #2954d1;
+  --color-brand-700: #2246b7;
+  --color-ink-900: #1f2942;
+  --color-ink-700: #4c5878;
+  --color-ink-500: #7b879f;
+  --color-paper: #f5f7fc;
+}
+
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+    color: var(--color-ink-900);
+    background:
+      radial-gradient(circle at top left, rgba(255, 208, 104, 0.28), transparent 28%),
+      radial-gradient(circle at top right, rgba(51, 102, 219, 0.16), transparent 25%),
+      linear-gradient(180deg, #fcfdff 0%, #f4f7fc 100%);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: transparent;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  button,
+  a,
+  input,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen bg-transparent text-ink-900;
+  }
+
+  .page-wrap {
+    @apply mx-auto w-full max-w-5xl px-3 sm:px-4 lg:px-5;
+  }
+
+  .glass-panel {
+    @apply rounded-[18px] border border-white/90 bg-white/95 shadow-[0_18px_50px_rgba(31,41,66,0.07)] backdrop-blur;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+  }
+
+  .primary-btn {
+    @apply btn h-9 min-h-9 border-none bg-brand-600 px-4 text-xs text-white shadow-[0_10px_24px_rgba(41,84,209,0.24)] transition-all duration-200 hover:bg-brand-700 hover:shadow-[0_16px_28px_rgba(41,84,209,0.26)] sm:h-10 sm:min-h-10 sm:px-5 sm:text-sm;
+    background-image: linear-gradient(135deg, #3c74ef 0%, #2954d1 100%);
+  }
+
+  .secondary-btn {
+    @apply btn h-9 min-h-9 border border-slate-200 bg-white px-4 text-xs text-ink-900 transition-all duration-200 hover:border-brand-100 hover:bg-brand-50 hover:shadow-[0_10px_18px_rgba(148,163,184,0.12)] sm:h-10 sm:min-h-10 sm:px-5 sm:text-sm;
+  }
+
+  .danger-btn {
+    @apply btn h-9 min-h-9 border-none bg-red-500 px-4 text-xs text-white shadow-[0_10px_20px_rgba(220,60,69,0.18)] transition-all duration-200 hover:bg-red-600 hover:shadow-[0_14px_24px_rgba(220,60,69,0.22)] sm:h-10 sm:min-h-10 sm:px-5 sm:text-sm;
+    background-image: linear-gradient(135deg, #ef5e66 0%, #dc3c45 100%);
+  }
+
+  .field-input {
+    @apply input h-10 w-full rounded-[14px] border-slate-200 bg-white px-3 text-xs text-ink-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-50 sm:h-11 sm:px-4 sm:text-sm;
+  }
+
+  .field-textarea {
+    @apply textarea min-h-32 w-full rounded-[14px] border-slate-200 bg-white px-3 py-3 text-xs text-ink-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-50 sm:min-h-36 sm:px-4 sm:text-sm;
+  }
+
+  .loading-shimmer {
+    background: linear-gradient(90deg, rgba(226, 232, 240, 0.75) 0%, rgba(241, 245, 249, 0.95) 50%, rgba(226, 232, 240, 0.75) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.05s linear infinite;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
