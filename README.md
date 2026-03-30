@@ -58,9 +58,9 @@ notes app frontend/
 
 ## Screenshots
 
-### Notes List | ### Create Note | ### Note Detail
+| ### Notes List | ### Create Note | ### Note Detail |
 
-<img width="1536" height="1024" alt="notes-list-reference" src="https://github.com/user-attachments/assets/a57287fa-b540-46a9-9a59-276aeea9d4d5" />|<img width="1536" height="1024" alt="create-note-reference" src="https://github.com/user-attachments/assets/2fda947f-1fb1-44fa-98c6-33ef2a7be8b4" />|<img width="1536" height="1024" alt="note-detail-reference" src="https://github.com/user-attachments/assets/2f163fc1-1e12-4b06-93ef-30dbf371d7de" />
+
 
 
 ## Requirements
