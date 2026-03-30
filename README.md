@@ -60,10 +60,7 @@ notes app frontend/
 
 | Notes List | Create Note | Note Detail |
 |------------|------------|------------|
-| <img width="1920" height="878" alt="2026-03-30 - 18_51_45 - notes-app-frontend" src="https://github.com/user-attachments/assets/5a830bad-8806-4460-bd2e-d61c474f6164" />
- | <img width="1920" height="878" alt="2026-03-30 - 18_52_10 - notes-app-frontend" src="https://github.com/user-attachments/assets/23969a56-4166-4ad7-bcaf-16e838c5afbc" />
- | <img width="1920" height="878" alt="2026-03-30 - 18_51_59 - notes-app-frontend" src="https://github.com/user-attachments/assets/0d485f5b-2089-4982-a00b-53cb0f2b2845" />
- |
+| <img width="1920" height="878" alt="2026-03-30 - 18_51_45 - notes-app-frontend" src="https://github.com/user-attachments/assets/5a830bad-8806-4460-bd2e-d61c474f6164" />| <img width="1920" height="878" alt="2026-03-30 - 18_52_10 - notes-app-frontend" src="https://github.com/user-attachments/assets/23969a56-4166-4ad7-bcaf-16e838c5afbc" />| <img width="1920" height="878" alt="2026-03-30 - 18_51_59 - notes-app-frontend" src="https://github.com/user-attachments/assets/0d485f5b-2089-4982-a00b-53cb0f2b2845" />|
 
 
 
