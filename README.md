@@ -1,142 +1,85 @@
 # Notes Evolved
 
-A MERN stack Notes App with full CRUD functionality and a responsive UI, designed to evolve into an AI-powered “Second Brain” that auto-summarizes, tags, links related notes, and provides insights.
-
-## Overview
-
-Notes Evolved is a full-stack notes application built with MongoDB, Express, React, and Node.js. It provides a clean interface for creating, viewing, editing, and deleting notes, while laying the foundation for future AI-assisted knowledge features.
+A MERN stack notes application with full CRUD functionality and a responsive UI, built to evolve into an AI-powered Second Brain.
 
 ## Features
 
-- Full CRUD notes management
-- Responsive, polished UI
-- Toast feedback for success and error states
-- Route-based navigation
-- Rate-limit handling support
+- Create, view, edit, and delete notes
+- Responsive React interface with loading, empty, and toast feedback states
 - MongoDB persistence with Mongoose
-- Production-ready root build/start workflow
+- Express API with request rate limiting
+- Production mode serves the built frontend from the backend
+- Optional shared Upstash rate limiting with an in-memory fallback
 
-## Tech Stack
+## Tech stack
 
-### Frontend
+- **Frontend:** React, Vite, React Router, Axios, Tailwind CSS, DaisyUI, Framer Motion
+- **Backend:** Node.js, Express, MongoDB, Mongoose
+- **Rate limiting:** Upstash Redis when configured, otherwise a bounded in-memory fallback
 
-- React
-- Vite
-- React Router DOM
-- Axios
-- Tailwind CSS
-- DaisyUI
-- Framer Motion
-- React Hot Toast
+## Project structure
 
-### Backend
-
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose
-- Upstash Rate Limiter
-
-## Project Structure
-
-```txt
-notes app frontend/
-├─ backend/
-│  ├─ src/
-│  └─ package.json
-├─ frontend/
-│  ├─ src/
-│  └─ package.json
-├─ docs/
-│  └─ screenshots/
-│     ├─ notes-list-reference.png
-│     ├─ create-note-reference.png
-│     └─ note-detail-reference.png
-├─ package.json
-└─ README.md
+```text
+.
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── model/
+│   │   ├── routes/
+│   │   └── server.js
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   └── package.json
+├── .env.example
+├── package.json
+└── README.md
 ```
-
-## Screenshots
-
-| Notes List | Create Note | Note Detail |
-|------------|------------|------------|
-| <img width="1920" height="878" alt="2026-03-30 - 18_51_45 - notes-app-frontend" src="https://github.com/user-attachments/assets/5a830bad-8806-4460-bd2e-d61c474f6164" />| <img width="1920" height="878" alt="2026-03-30 - 18_52_10 - notes-app-frontend" src="https://github.com/user-attachments/assets/23969a56-4166-4ad7-bcaf-16e838c5afbc" />| <img width="1920" height="878" alt="2026-03-30 - 18_51_59 - notes-app-frontend" src="https://github.com/user-attachments/assets/0d485f5b-2089-4982-a00b-53cb0f2b2845" />|
-
-
-
 
 ## Requirements
 
-- Node.js (LTS recommended)
+- Node.js LTS
 - npm
-- MongoDB connection string
-- Upstash Redis credentials for rate limiting
+- MongoDB, local or hosted
 
-## Environment Setup
+Upstash Redis is optional. Without both Upstash environment variables, the backend applies a per-process in-memory limit of 100 requests per client per minute. This fallback is not shared between multiple server instances and its counters reset when the process restarts. For multi-instance deployments, configure Upstash.
 
-Create a `.env` file inside `backend/`:
+## Environment setup
 
-```env
-MONGO_URI=your_mongodb_connection_string
-UPSTASH_REDIS_REST_URL=your_upstash_redis_url
-UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
-PORT=3001
-NODE_ENV=production
+Copy the example file to the backend environment file:
+
+```bash
+cp .env.example backend/.env
 ```
 
-## Run Locally
+On Windows PowerShell:
 
-This project is configured to be built and started from the root folder.
+```powershell
+Copy-Item .env.example backend/.env
+```
 
-### 1) Install dependencies
+Set `MONGO_URI` to a MongoDB connection string you control. The remaining variables are documented in `.env.example`. Configure both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to enable shared Upstash rate limiting. Keep real credentials in `backend/.env`, never in source control.
 
-From the project root:
+## Run locally
+
+From the repository root:
 
 ```bash
 npm install
-```
-
-### 2) Build the app
-
-From the project root:
-
-```bash
 npm run build
-```
-
-This installs dependencies in both `backend/` and `frontend/`, then builds the frontend for production.
-
-### 3) Start the app
-
-From the project root:
-
-```bash
 npm run start
 ```
 
-This starts the backend server, which also serves the built frontend in production mode.
+Open [http://localhost:3001](http://localhost:3001).
 
-### 4) Open the app
+The root build script installs backend and frontend dependencies and creates the frontend production build. The start script launches the backend, which connects to MongoDB before listening.
 
-Visit:
+For separate development servers, run these commands in two terminals:
 
-```txt
-http://localhost:3001
-```
-
-## Development Mode
-
-If you want to work on frontend and backend separately:
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Backend
+**Backend**
 
 ```bash
 cd backend
@@ -144,35 +87,35 @@ npm install
 npm run dev
 ```
 
-Default local dev ports:
+**Frontend**
 
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3001`
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## API Endpoints
+The Vite development server runs at [http://localhost:5173](http://localhost:5173) and calls the backend at [http://localhost:3001](http://localhost:3001). Set `FRONTEND_URL` if your frontend uses a different development origin.
 
-- `GET /api/notes` - fetch all notes
-- `GET /api/notes/:id` - fetch a single note
-- `POST /api/notes` - create a note
-- `PUT /api/notes/:id` - update a note
-- `DELETE /api/notes/:id` - delete a note
+## API
 
-## Future Vision
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/notes` | List notes |
+| GET | `/api/notes/:id` | Read one note |
+| POST | `/api/notes` | Create a note |
+| PUT | `/api/notes/:id` | Update a note |
+| DELETE | `/api/notes/:id` | Delete a note |
 
-Notes Evolved is intended to grow into an AI-powered “Second Brain” with features such as:
+## Privacy and AI roadmap
 
-- automatic note summarization
-- smart tagging
-- related-note linking
-- insight generation
-- contextual knowledge retrieval
+The current application stores notes in the configured MongoDB database. It does not send note content to an AI provider. Future AI features must remain disabled unless a provider is explicitly configured by the operator through environment variables, and the app must continue to work without an AI key.
 
-## Troubleshooting
+## Screenshots
 
-- If MongoDB fails to connect, verify `MONGO_URI` in `backend/.env`.
-- If rate limiting fails, verify the Upstash Redis credentials.
-- If the app does not load after `npm run start`, make sure `npm run build` completed successfully first.
-- If the frontend API path changes, update the frontend base URL accordingly.
+| Notes list | Create note | Note detail |
+| --- | --- | --- |
+| <img width="1920" height="878" alt="Notes list" src="https://github.com/user-attachments/assets/5a830bad-8806-4460-bd2e-d61c474f6164" /> | <img width="1920" height="878" alt="Create note" src="https://github.com/user-attachments/assets/23969a56-4166-4ad7-bcaf-16e838c5afbc" /> | <img width="1920" height="878" alt="Note detail" src="https://github.com/user-attachments/assets/0d485f5b-2089-4982-a00b-53cb0f2b2845" /> |
 
 ## License
 
