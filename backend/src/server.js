@@ -5,6 +5,7 @@ import path from "path";
 import notesRoutes from "./routes/notesRoutes.js";
 import connectDB from "./config/db.js";
 import rateLimiter from "./middleware/rateLimiter.js";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 app.use("/api/notes", rateLimiter, notesRoutes);
+app.use("/api", notFoundHandler);
 
 const rootDirectory = path.resolve();
 
@@ -29,6 +31,9 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path.join(rootDirectory, "../frontend/dist/index.html"));
   });
 }
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 const PORT = Number(process.env.PORT) || 3001;
 

@@ -10,7 +10,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 - [x] Fix the development port mismatch and make rate limiting work without mandatory Upstash credentials.
 - [x] Keep the existing `frontend/` and `backend/` separation; avoid a disruptive rename to `client/` and `server/`.
 - [x] Document environment configuration and add a placeholder-only `.env.example`.
-- [ ] Add centralized error handling.
+- [x] Add centralized error handling.
 - [ ] Add request input validation.
 - [ ] Standardize API response shapes across all note endpoints.
 - [x] Document setup, development, and production run instructions in the README.
@@ -89,4 +89,5 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-07: Added centralized Express error handling, async controller forwarding, safe client error responses, and built-in Node tests.
 - 2026-11-06: Established the roadmap; aligned the backend default port with the Vite client; added optional Upstash configuration with a bounded local rate-limit fallback; documented environment setup.
