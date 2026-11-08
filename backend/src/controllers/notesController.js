@@ -19,7 +19,10 @@ export const getNote = asyncHandler(async (req, res) => {
 });
 
 export const updateNote = asyncHandler(async (req, res) => {
-  const updatedNote = await Note.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const updatedNote = await Note.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
 
   if (!updatedNote) {
     throw noteNotFound();
