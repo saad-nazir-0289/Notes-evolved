@@ -1,3 +1,5 @@
+import { failureResponse } from "../utils/apiResponse.js";
+
 const getStatusCode = (error) => {
   if (error?.type === "entity.too.large") return 413;
   if (error?.type === "entity.parse.failed") return 400;
@@ -23,7 +25,7 @@ export const errorHandler = (error, _req, res, next) => {
   }
 
   const message = status >= 500 ? "Internal server error" : error.message || "Request failed";
-  return res.status(status).json({ message });
+  return res.status(status).json(failureResponse(message));
 };
 
 export default errorHandler;

@@ -28,6 +28,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 │   │   ├── middleware/
 │   │   ├── model/
 │   │   ├── routes/
+│   │   ├── utils/
 │   │   └── server.js
 │   └── package.json
 ├── frontend/
@@ -98,6 +99,22 @@ npm run dev
 The Vite development server runs at [http://localhost:5173](http://localhost:5173) and calls the backend at [http://localhost:3001](http://localhost:3001). Set `FRONTEND_URL` if your frontend uses a different development origin.
 
 ## API
+
+All note endpoints return the same JSON envelope. Successful responses use `success: true`, a human-readable `message`, and a `data` field. The `data` value is an array for the list endpoint, a note object for read/create/update, and `null` after deletion.
+
+```json
+{
+  "success": true,
+  "message": "Note found successfully",
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "title": "Project",
+    "description": "Project details"
+  }
+}
+```
+
+Errors use the same top-level keys with `success: false` and `data: null`. Unexpected server errors return a generic message rather than internal details.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |

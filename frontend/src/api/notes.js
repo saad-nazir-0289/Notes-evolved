@@ -10,17 +10,17 @@ const normalizeNote = (note) => ({
 
 export const getNotes = async () => {
     const response = await api.get("/notes")
-    return response.data.notes.map(normalizeNote)
+    return response.data.data.map(normalizeNote)
 }
 
 export const createNote = async (noteData) => {
     const response = await api.post("/notes", noteData)
-    return normalizeNote(response.data)
+    return normalizeNote(response.data.data)
 }
 
 export const updateNote = async (id, noteData) => {
     const response = await api.put(`/notes/${id}`, noteData)
-    return normalizeNote(response.data)
+    return normalizeNote(response.data.data)
 }
 
 export const deleteNote = async (id) => {

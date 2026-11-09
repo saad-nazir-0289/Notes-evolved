@@ -76,7 +76,7 @@ test("rejects malformed Mongo ObjectId route parameters", async () => {
   }
 });
 
-test("validation errors are returned as safe HTTP 400 responses", async () => {
+test("validation errors use the standard failure envelope", async () => {
   let forwarded;
   await validateNoteBody()({ body: { title: "Only title" } }, {}, (error) => {
     forwarded = error;
@@ -97,5 +97,9 @@ test("validation errors are returned as safe HTTP 400 responses", async () => {
 
   errorHandler(forwarded, {}, response, assert.fail);
   assert.equal(response.statusCode, 400);
-  assert.deepEqual(response.body, { message: "description is required" });
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "description is required",
+    data: null,
+  });
 });

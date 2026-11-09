@@ -2,7 +2,7 @@
 
 Product direction: evolve the MERN notes app into a privacy-conscious AI Second Brain while keeping the application runnable after every increment.
 
-**Current phase:** Phase 0 - Foundation
+**Current phase:** Phase 1 - Solid CRUD
 
 ## Phase 0 - Foundation
 
@@ -12,7 +12,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 - [x] Document environment configuration and add a placeholder-only `.env.example`.
 - [x] Add centralized error handling.
 - [x] Add request input validation for note bodies and Mongo ObjectId route parameters.
-- [ ] Standardize API response shapes across all note endpoints.
+- [x] Standardize API response shapes across all note endpoints.
 - [x] Document setup, development, and production run instructions in the README.
 
 ## Phase 1 - Solid CRUD
@@ -89,6 +89,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-09: Standardized successful and error envelopes across note endpoints, updated the frontend API adapter, and documented the contract.
 - 2026-11-08: Added note request validation, strict writable-field allowlisting, ObjectId checks, shared field length limits, and Mongoose update validators.
 - 2026-11-07: Added centralized Express error handling, async controller forwarding, safe client error responses, and built-in Node tests.
 - 2026-11-06: Established the roadmap; aligned the backend default port with the Vite client; added optional Upstash configuration with a bounded local rate-limit fallback; documented environment setup.

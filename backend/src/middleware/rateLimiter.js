@@ -1,4 +1,5 @@
 import ratelimit from "../config/upstash.js";
+import { failureResponse } from "../utils/apiResponse.js";
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 100;
@@ -40,7 +41,7 @@ const rateLimiter = async (req, res, next) => {
       const result = await ratelimit.limit(clientKey);
 
       if (!result.success) {
-        return res.status(429).json({ message: "Too many requests" });
+        return res.status(429).json(failureResponse("Too many requests"));
       }
 
       return next();
@@ -53,7 +54,7 @@ const rateLimiter = async (req, res, next) => {
   }
 
   if (!isAllowedLocally(clientKey)) {
-    return res.status(429).json({ message: "Too many requests" });
+    return res.status(429).json(failureResponse("Too many requests"));
   }
 
   return next();

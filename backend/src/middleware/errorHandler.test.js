@@ -17,7 +17,7 @@ const createResponse = (headersSent = false) => ({
   },
 });
 
-test("redacts unexpected server errors", () => {
+test("redacts unexpected server errors in the standard failure envelope", () => {
   const response = createResponse();
   const originalError = console.error;
   console.error = () => {};
@@ -29,17 +29,25 @@ test("redacts unexpected server errors", () => {
   }
 
   assert.equal(response.statusCode, 500);
-  assert.deepEqual(response.body, { message: "Internal server error" });
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Internal server error",
+    data: null,
+  });
 });
 
-test("preserves intentional client errors", () => {
+test("preserves intentional client errors in the standard failure envelope", () => {
   const response = createResponse();
   const error = Object.assign(new Error("Note not found"), { status: 404 });
 
   errorHandler(error, {}, response, assert.fail);
 
   assert.equal(response.statusCode, 404);
-  assert.deepEqual(response.body, { message: "Note not found" });
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Note not found",
+    data: null,
+  });
 });
 
 test("maps Mongoose validation and cast errors to 400", () => {
