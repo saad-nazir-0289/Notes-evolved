@@ -17,7 +17,8 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Phase 1 - Solid CRUD
 
-- [ ] Complete and verify create, read, update, and delete flows.
+- [x] Verify backend CRUD controller contracts: list, read, create, update, delete, empty lists, missing records, and storage-error forwarding.
+- [ ] Verify browser-to-API CRUD flows against a running MongoDB instance.
 - [ ] Add note search.
 - [ ] Add sorting.
 - [ ] Add pagination.
@@ -89,6 +90,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-10: Expanded backend CRUD controller coverage for empty lists, missing records across read/update/delete, and database error forwarding; browser-to-API verification remains pending.
 - 2026-11-09: Standardized successful and error envelopes across note endpoints, updated the frontend API adapter, and documented the contract.
 - 2026-11-08: Added note request validation, strict writable-field allowlisting, ObjectId checks, shared field length limits, and Mongoose update validators.
 - 2026-11-07: Added centralized Express error handling, async controller forwarding, safe client error responses, and built-in Node tests.

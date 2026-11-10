@@ -76,6 +76,16 @@ test("list endpoint returns the standard success envelope", async () => {
   assert.deepEqual(calls.sort, { createdAt: -1 });
 });
 
+test("list endpoint returns an empty array when no notes exist", async () => {
+  const { model } = createModel();
+  model.find = () => ({ sort: async () => [] });
+  const { response, error } = await invoke(createNotesController(model).getNotes);
+
+  assert.equal(error, undefined);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body.data, []);
+});
+
 test("single-note endpoint returns the standard success envelope", async () => {
   const { model } = createModel();
   const { response, error } = await invoke(createNotesController(model).getNote, {
@@ -144,14 +154,48 @@ test("delete endpoint returns the standard envelope with null data", async () =>
   assert.equal(calls.delete, note._id);
 });
 
-test("missing notes still flow to the centralized 404 handler", async () => {
+test("read, update, and delete return not-found errors for missing notes", async () => {
   const { model } = createModel();
   model.findById = async () => null;
-  const { response, error } = await invoke(createNotesController(model).getNote, {
-    params: { id: note._id },
-  });
+  model.findByIdAndUpdate = async () => null;
+  model.findByIdAndDelete = async () => null;
 
-  assert.equal(response.body, null);
-  assert.equal(error.status, 404);
-  assert.equal(error.message, "Note not found");
+  const controllers = createNotesController(model);
+  const cases = [
+    [controllers.getNote, { params: { id: note._id } }],
+    [controllers.updateNote, { params: { id: note._id }, body: { title: "Renamed" } }],
+    [controllers.deleteNote, { params: { id: note._id } }],
+  ];
+
+  for (const [handler, request] of cases) {
+    const { response, error } = await invoke(handler, request);
+    assert.equal(response.statusCode, null);
+    assert.equal(error.status, 404);
+    assert.equal(error.message, "Note not found");
+  }
+});
+
+test("forwards database failures from every CRUD operation", async () => {
+  const databaseError = new Error("database unavailable");
+  const model = {
+    find: () => ({ sort: async () => { throw databaseError; } }),
+    findById: async () => { throw databaseError; },
+    findByIdAndUpdate: async () => { throw databaseError; },
+    create: async () => { throw databaseError; },
+    findByIdAndDelete: async () => { throw databaseError; },
+  };
+  const controllers = createNotesController(model);
+  const cases = [
+    [controllers.getNotes, {}],
+    [controllers.getNote, { params: { id: note._id } }],
+    [controllers.createNote, { body: { title: note.title, description: note.description } }],
+    [controllers.updateNote, { params: { id: note._id }, body: { title: "Renamed" } }],
+    [controllers.deleteNote, { params: { id: note._id } }],
+  ];
+
+  for (const [handler, request] of cases) {
+    const { response, error } = await invoke(handler, request);
+    assert.equal(response.statusCode, null);
+    assert.equal(error, databaseError);
+  }
 });
