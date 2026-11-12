@@ -19,6 +19,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 - [x] Verify backend CRUD controller contracts: list, read, create, update, delete, empty lists, missing records, and storage-error forwarding.
 - [ ] Verify browser-to-API CRUD flows against a running MongoDB instance.
+  - [x] Exercise registered note-route middleware/controller stacks with a deterministic in-memory Note adapter across create, read, update, list, delete, validation, and response-envelope behavior.
   - [x] Prevent direct note-detail URLs from redirecting before the initial notes fetch finishes.
 - [ ] Add note search.
 - [ ] Add sorting.
@@ -91,6 +92,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-12: Extracted note-route registration and added deterministic route-stack tests for CRUD, validation, response envelopes, and missing records; live MongoDB-backed HTTP/browser verification remains pending.
 - 2026-11-11: Fixed direct note-detail routes redirecting during the initial notes fetch and added frontend state-resolution tests; live MongoDB-backed browser-to-API CRUD verification remains pending.
 - 2026-11-10: Expanded backend CRUD controller coverage for empty lists, missing records across read/update/delete, and database error forwarding; browser-to-API verification remains pending.
 - 2026-11-09: Standardized successful and error envelopes across note endpoints, updated the frontend API adapter, and documented the contract.
