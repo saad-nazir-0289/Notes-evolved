@@ -8,8 +8,10 @@ const normalizeNote = (note) => ({
     updatedAt: note.updatedAt,
 })
 
-export const getNotes = async () => {
-    const response = await api.get("/notes")
+export const getNotes = async (searchTerm = "") => {
+    const response = await api.get("/notes", {
+        params: searchTerm ? { q: searchTerm } : undefined,
+    })
     return response.data.data.map(normalizeNote)
 }
 
@@ -19,11 +21,11 @@ export const createNote = async (noteData) => {
 }
 
 export const updateNote = async (id, noteData) => {
-    const response = await api.put(`/notes/${id}`, noteData)
+    const response = await api.put("/notes/" + id, noteData)
     return normalizeNote(response.data.data)
 }
 
 export const deleteNote = async (id) => {
-    const response = await api.delete(`/notes/${id}`)
+    const response = await api.delete("/notes/" + id)
     return response.data
 }

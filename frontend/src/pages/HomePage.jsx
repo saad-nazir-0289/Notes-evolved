@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EmptyState from '../components/EmptyState'
 import Navbar from '../components/Navbar'
@@ -10,8 +12,53 @@ const MotionMain = motion.main
 const MotionDiv = motion.div
 
 function HomePage() {
-  const { notes, loading, fetchError, deleteNote } = useNotes()
+  const {
+    notes,
+    loading,
+    fetchError,
+    searchResults,
+    searchLoading,
+    searchError,
+    searchNotes,
+    deleteNote,
+  } = useNotes()
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchDebouncing, setSearchDebouncing] = useState(false)
+  const searchTimerRef = useRef(null)
+  const isSearching = searchTerm.trim().length > 0
+  const displayedNotes = isSearching ? (searchResults ?? []) : notes
+  const isLoading = loading || (isSearching && (searchDebouncing || searchLoading))
+  const currentError = isSearching ? searchError : fetchError
+
+  useEffect(() => () => {
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current)
+    }
+  }, [])
+
+  const handleSearchChange = (event) => {
+    const nextQuery = event.target.value
+    setSearchTerm(nextQuery)
+    searchNotes('')
+
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current)
+    }
+
+    if (!nextQuery.trim()) {
+      setSearchDebouncing(false)
+      searchTimerRef.current = null
+      return
+    }
+
+    setSearchDebouncing(true)
+    searchTimerRef.current = window.setTimeout(() => {
+      setSearchDebouncing(false)
+      searchNotes(nextQuery)
+      searchTimerRef.current = null
+    }, 250)
+  }
 
   const handleDelete = async (id) => {
     try {
@@ -34,7 +81,28 @@ function HomePage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
       >
-        {loading ? (
+        <div className="mb-4 max-w-xl">
+          <label className="sr-only" htmlFor="note-search">Search notes</label>
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              size={17}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-500"
+            />
+            <input
+              id="note-search"
+              type="search"
+              maxLength={100}
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Search by title or content..."
+              className="field-input pl-10"
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
           <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="glass-panel overflow-hidden p-4 sm:p-4.5">
@@ -56,31 +124,42 @@ function HomePage() {
               </div>
             ))}
           </div>
-        ) : fetchError === 'rate-limit' ? (
+        ) : currentError === 'rate-limit' ? (
           <MotionDiv
+            role="status"
             className="glass-panel mx-auto max-w-md p-4 text-center text-sm text-ink-700"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
-            Notes are temporarily unavailable because too many requests were sent.
+            {isSearching
+              ? 'Search is temporarily unavailable because too many requests were sent.'
+              : 'Notes are temporarily unavailable because too many requests were sent.'}
           </MotionDiv>
-        ) : fetchError === 'general' ? (
+        ) : currentError === 'general' ? (
           <MotionDiv
+            role="status"
             className="glass-panel mx-auto max-w-md p-4 text-center text-sm text-ink-700"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
-            Unable to load notes right now.
+            {isSearching ? 'Unable to search notes right now.' : 'Unable to load notes right now.'}
           </MotionDiv>
-        ) : notes.length ? (
+        ) : displayedNotes.length ? (
           <MotionDiv layout className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence mode="popLayout">
-              {notes.map((note) => (
+              {displayedNotes.map((note) => (
                 <NoteCard key={note.id} note={note} onDelete={handleDelete} />
               ))}
             </AnimatePresence>
+          </MotionDiv>
+        ) : isSearching ? (
+          <MotionDiv
+            role="status"
+            className="glass-panel mx-auto max-w-md p-4 text-center text-sm text-ink-700"
+          >
+            No notes match "{searchTerm.trim()}".
           </MotionDiv>
         ) : (
           <EmptyState />

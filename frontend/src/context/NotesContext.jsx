@@ -12,7 +12,11 @@ export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(null)
+  const [searchResults, setSearchResults] = useState(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState(null)
   const hasFetchedRef = useRef(false)
+  const searchRequestRef = useRef(0)
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
 
   const fetchNotes = useCallback(async () => {
@@ -44,6 +48,37 @@ export function NotesProvider({ children }) {
     hasFetchedRef.current = true
     fetchNotes()
   }, [fetchNotes])
+
+  const searchNotes = useCallback(async (query) => {
+    const requestId = ++searchRequestRef.current
+    const normalizedQuery = query.trim()
+
+    setSearchResults(null)
+    setSearchError(null)
+
+    if (!normalizedQuery) {
+      setSearchLoading(false)
+      return
+    }
+
+    setSearchLoading(true)
+
+    try {
+      const results = await getNotes(normalizedQuery)
+      if (requestId === searchRequestRef.current) {
+        setSearchResults(results)
+        clearRateLimit()
+      }
+    } catch (error) {
+      if (requestId === searchRequestRef.current) {
+        setSearchError(handleRateLimitError(error) ? 'rate-limit' : 'general')
+      }
+    } finally {
+      if (requestId === searchRequestRef.current) {
+        setSearchLoading(false)
+      }
+    }
+  }, [clearRateLimit, handleRateLimitError])
 
   const createNote = useCallback(async ({ title, description }) => {
     const tempId = `temp-${crypto.randomUUID()}`
@@ -106,6 +141,7 @@ export function NotesProvider({ children }) {
 
     try {
       await deleteNoteApi(id)
+      setSearchResults((currentResults) => currentResults?.filter((note) => note.id !== id) ?? currentResults)
     } catch (error) {
       setNotes(previousNotes)
       throw error
@@ -119,11 +155,28 @@ export function NotesProvider({ children }) {
     loading,
     fetchError,
     fetchNotes,
+    searchResults,
+    searchLoading,
+    searchError,
+    searchNotes,
     getNoteById,
     createNote,
     updateNote,
     deleteNote,
-  }), [notes, loading, fetchError, fetchNotes, getNoteById, createNote, updateNote, deleteNote])
+  }), [
+    notes,
+    loading,
+    fetchError,
+    fetchNotes,
+    searchResults,
+    searchLoading,
+    searchError,
+    searchNotes,
+    getNoteById,
+    createNote,
+    updateNote,
+    deleteNote,
+  ])
 
 
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>

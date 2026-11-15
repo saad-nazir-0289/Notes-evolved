@@ -21,7 +21,10 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 - [ ] Verify browser-to-API CRUD flows against a running MongoDB instance.
   - [x] Exercise registered note-route middleware/controller stacks with a deterministic in-memory Note adapter across create, read, update, list, delete, validation, and response-envelope behavior.
   - [x] Prevent direct note-detail URLs from redirecting before the initial notes fetch finishes.
-- [ ] Add note search.
+- [x] Add note search.
+  - [x] Search note titles and descriptions case-insensitively through `GET /api/notes?q=...`.
+  - [x] Bound search input length and escape regular-expression metacharacters.
+  - [x] Connect the home-page search field to the API with debouncing and stale-response protection.
 - [ ] Add sorting.
 - [ ] Add pagination.
 - [ ] Add pin and archive behavior.
@@ -92,6 +95,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-15: Added bounded, case-insensitive title/description search with literal regex escaping, API validation, debounced frontend search, stale-response protection, tests, and API documentation; live MongoDB-backed browser CRUD verification remains pending.
 - 2026-11-12: Extracted note-route registration and added deterministic route-stack tests for CRUD, validation, response envelopes, and missing records; live MongoDB-backed HTTP/browser verification remains pending.
 - 2026-11-11: Fixed direct note-detail routes redirecting during the initial notes fetch and added frontend state-resolution tests; live MongoDB-backed browser-to-API CRUD verification remains pending.
 - 2026-11-10: Expanded backend CRUD controller coverage for empty lists, missing records across read/update/delete, and database error forwarding; browser-to-API verification remains pending.

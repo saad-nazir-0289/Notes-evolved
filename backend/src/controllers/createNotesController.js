@@ -1,11 +1,13 @@
 import asyncHandler from "../middleware/asyncHandler.js";
 import { successResponse } from "../utils/apiResponse.js";
+import { createNoteSearchFilter } from "../utils/noteSearch.js";
 
 const noteNotFound = () => Object.assign(new Error("Note not found"), { status: 404 });
 
 export const createNotesController = (Note) => ({
-  getNotes: asyncHandler(async (_req, res) => {
-    const notes = await Note.find().sort({ createdAt: -1 });
+  getNotes: asyncHandler(async (req, res) => {
+    const filter = createNoteSearchFilter(req.noteSearchTerm);
+    const notes = await Note.find(filter).sort({ createdAt: -1 });
     return res.status(200).json(successResponse("Notes found successfully", notes));
   }),
 

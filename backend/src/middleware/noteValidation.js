@@ -1,5 +1,6 @@
 import {
   NOTE_DESCRIPTION_MAX_LENGTH,
+  NOTE_SEARCH_MAX_LENGTH,
   NOTE_TITLE_MAX_LENGTH,
 } from "../config/noteConstraints.js";
 
@@ -12,6 +13,27 @@ export const validateNoteId = (req, _res, next) => {
     return next(badRequest("Invalid note id"));
   }
 
+  return next();
+};
+
+export const validateNoteSearchQuery = (req, _res, next) => {
+  const query = req.query?.q;
+
+  if (query === undefined) {
+    req.noteSearchTerm = "";
+    return next();
+  }
+
+  if (typeof query !== "string") {
+    return next(badRequest("Search query must be a string"));
+  }
+
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length > NOTE_SEARCH_MAX_LENGTH) {
+    return next(badRequest("Search query must be " + NOTE_SEARCH_MAX_LENGTH + " characters or fewer"));
+  }
+
+  req.noteSearchTerm = normalizedQuery;
   return next();
 };
 
