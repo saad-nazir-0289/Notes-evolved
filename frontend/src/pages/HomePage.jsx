@@ -35,6 +35,18 @@ function HomePage() {
   const isLoading = loading || (isSearching && (searchDebouncing || searchLoading))
   const currentError = isSearching ? searchError : fetchError
 
+  const refreshListOnMountRef = useRef(
+    searchResults !== null || searchLoading || searchError !== null,
+  )
+  const initialSortOptionsRef = useRef(sortOptions)
+  const fetchNotesOnMountRef = useRef(fetchNotes)
+
+  useEffect(() => {
+    if (refreshListOnMountRef.current) {
+      fetchNotesOnMountRef.current(initialSortOptionsRef.current)
+    }
+  }, [])
+
   useEffect(() => () => {
     if (searchTimerRef.current) {
       window.clearTimeout(searchTimerRef.current)
