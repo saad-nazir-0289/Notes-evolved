@@ -17,11 +17,11 @@ const createRouter = () => {
   return { router, routes };
 };
 
-const dispatch = (routes, method, path, { params = {}, body } = {}) => new Promise((resolve, reject) => {
+const dispatch = (routes, method, path, { params = {}, body, query = {} } = {}) => new Promise((resolve, reject) => {
   const handlers = routes.get(`${method} ${path}`);
   assert.ok(handlers, `Expected ${method} ${path} to be registered`);
 
-  const req = { params, body };
+  const req = { params, body, query };
   const res = {
     statusCode: 200,
     body: null,
@@ -53,9 +53,11 @@ const dispatch = (routes, method, path, { params = {}, body } = {}) => new Promi
 
 const createNoteModel = () => {
   const records = new Map();
+  const sortCalls = [];
   return {
     records,
-    find: () => ({ sort: async () => [...records.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) }),
+    sortCalls,
+    find: () => ({ sort: async (sort) => { sortCalls.push(sort); return [...records.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)); } }),
     findById: async (id) => records.get(id) ?? null,
     create: async (body) => {
       const now = "2026-11-12T05:00:00.000Z";
@@ -143,4 +145,23 @@ test("registered routes reject invalid ids and unsupported write fields", async 
   assert.equal(invalidBody.statusCode, 400);
   assert.equal(invalidBody.body.success, false);
   assert.equal(Note.records.size, 0);
+});
+
+test("registered GET / accepts allowlisted sorting and rejects invalid sort input", async () => {
+  const { router, routes } = createRouter();
+  const Note = createNoteModel();
+  registerNotesRoutes(router, Note);
+
+  const sorted = await dispatch(routes, "GET", "/", {
+    query: { sortBy: "title", sortOrder: "asc" },
+  });
+  assert.equal(sorted.statusCode, 200);
+  assert.deepEqual(Note.sortCalls, [{ title: 1, _id: 1 }]);
+
+  const invalid = await dispatch(routes, "GET", "/", {
+    query: { sortBy: "__proto__" },
+  });
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(invalid.body.success, false);
+  assert.equal(Note.sortCalls.length, 1);
 });

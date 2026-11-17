@@ -8,10 +8,12 @@ const normalizeNote = (note) => ({
     updatedAt: note.updatedAt,
 })
 
-export const getNotes = async (searchTerm = "") => {
-    const response = await api.get("/notes", {
-        params: searchTerm ? { q: searchTerm } : undefined,
-    })
+export const getNotes = async (searchTerm = "", sortOptions = {}) => {
+    const params = {
+        ...(searchTerm ? { q: searchTerm } : {}),
+        ...sortOptions,
+    }
+    const response = await api.get("/notes", { params })
     return response.data.data.map(normalizeNote)
 }
 

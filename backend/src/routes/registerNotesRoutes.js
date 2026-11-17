@@ -3,12 +3,13 @@ import {
   validateNoteBody,
   validateNoteId,
   validateNoteSearchQuery,
+  validateNoteSortQuery,
 } from "../middleware/noteValidation.js";
 
 export const registerNotesRoutes = (router, Note) => {
   const { getNotes, getNote, updateNote, createNote, deleteNote } = createNotesController(Note);
 
-  router.get("/", validateNoteSearchQuery, getNotes);
+  router.get("/", validateNoteSearchQuery, validateNoteSortQuery, getNotes);
   router.get("/:id", validateNoteId, getNote);
   router.put("/:id", validateNoteId, validateNoteBody({ partial: true }), updateNote);
   router.post("/", validateNoteBody(), createNote);

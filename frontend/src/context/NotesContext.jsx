@@ -8,6 +8,8 @@ import {
 } from '../api/notes'
 import { useRateLimit } from './useRateLimit'
 
+const DEFAULT_SORT_OPTIONS = { sortBy: 'createdAt', sortOrder: 'desc' }
+
 export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -16,18 +18,22 @@ export function NotesProvider({ children }) {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(null)
   const hasFetchedRef = useRef(false)
+  const listRequestRef = useRef(0)
   const searchRequestRef = useRef(0)
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
 
-  const fetchNotes = useCallback(async () => {
+  const fetchNotes = useCallback(async (sortOptions = DEFAULT_SORT_OPTIONS) => {
+    const requestId = ++listRequestRef.current
     try {
       setLoading(true)
       setFetchError(null)
 
-      const data = await getNotes()
+      const data = await getNotes('', sortOptions)
+      if (requestId !== listRequestRef.current) return
       setNotes(data)
       clearRateLimit()
     } catch (error) {
+      if (requestId !== listRequestRef.current) return
       console.error('Error fetching notes:', error)
 
       if (handleRateLimitError(error)) {
@@ -36,7 +42,7 @@ export function NotesProvider({ children }) {
         setFetchError('general')
       }
     } finally {
-      setLoading(false)
+      if (requestId === listRequestRef.current) setLoading(false)
     }
   }, [clearRateLimit, handleRateLimitError])
 
@@ -49,7 +55,7 @@ export function NotesProvider({ children }) {
     fetchNotes()
   }, [fetchNotes])
 
-  const searchNotes = useCallback(async (query) => {
+  const searchNotes = useCallback(async (query, sortOptions = DEFAULT_SORT_OPTIONS) => {
     const requestId = ++searchRequestRef.current
     const normalizedQuery = query.trim()
 
@@ -64,7 +70,7 @@ export function NotesProvider({ children }) {
     setSearchLoading(true)
 
     try {
-      const results = await getNotes(normalizedQuery)
+      const results = await getNotes(normalizedQuery, sortOptions)
       if (requestId === searchRequestRef.current) {
         setSearchResults(results)
         clearRateLimit()

@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar'
 import NoteCard from '../components/NoteCard'
 import { useNotes } from '../context/useNotes'
 import { useRateLimit } from '../context/useRateLimit'
+import { DEFAULT_NOTE_SORT_VALUE, NOTE_SORT_OPTIONS, parseNoteSortValue } from '../utils/noteSort'
 
 const MotionMain = motion.main
 const MotionDiv = motion.div
@@ -16,6 +17,7 @@ function HomePage() {
     notes,
     loading,
     fetchError,
+    fetchNotes,
     searchResults,
     searchLoading,
     searchError,
@@ -24,6 +26,7 @@ function HomePage() {
   } = useNotes()
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
   const [searchTerm, setSearchTerm] = useState('')
+  const [sortValue, setSortValue] = useState(DEFAULT_NOTE_SORT_VALUE)
   const [searchDebouncing, setSearchDebouncing] = useState(false)
   const searchTimerRef = useRef(null)
   const isSearching = searchTerm.trim().length > 0
@@ -55,9 +58,24 @@ function HomePage() {
     setSearchDebouncing(true)
     searchTimerRef.current = window.setTimeout(() => {
       setSearchDebouncing(false)
-      searchNotes(nextQuery)
+      searchNotes(nextQuery, parseNoteSortValue(sortValue))
       searchTimerRef.current = null
     }, 250)
+  }
+
+  const handleSortChange = (event) => {
+    const nextSortValue = event.target.value
+    const sortOptions = parseNoteSortValue(nextSortValue)
+    setSortValue(nextSortValue)
+
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current)
+      searchTimerRef.current = null
+    }
+    setSearchDebouncing(false)
+
+    if (isSearching) searchNotes(searchTerm, sortOptions)
+    else fetchNotes(sortOptions)
   }
 
   const handleDelete = async (id) => {
@@ -81,24 +99,39 @@ function HomePage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2 }}
       >
-        <div className="mb-4 max-w-xl">
-          <label className="sr-only" htmlFor="note-search">Search notes</label>
-          <div className="relative">
-            <Search
-              aria-hidden="true"
-              size={17}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-500"
-            />
-            <input
-              id="note-search"
-              type="search"
-              maxLength={100}
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="Search by title or content..."
-              className="field-input pl-10"
-              autoComplete="off"
-            />
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full max-w-xl">
+            <label className="sr-only" htmlFor="note-search">Search notes</label>
+            <div className="relative">
+              <Search
+                aria-hidden="true"
+                size={17}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-500"
+              />
+              <input
+                id="note-search"
+                type="search"
+                maxLength={100}
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder="Search by title or content..."
+                className="field-input pl-10"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <div className="w-full sm:w-48">
+            <label className="sr-only" htmlFor="note-sort">Sort notes</label>
+            <select
+              id="note-sort"
+              value={sortValue}
+              onChange={handleSortChange}
+              className="field-input"
+            >
+              {NOTE_SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           </div>
         </div>
 

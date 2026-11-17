@@ -3,6 +3,12 @@ import {
   NOTE_SEARCH_MAX_LENGTH,
   NOTE_TITLE_MAX_LENGTH,
 } from "../config/noteConstraints.js";
+import {
+  DEFAULT_NOTE_SORT,
+  NOTE_SORT_FIELDS,
+  NOTE_SORT_ORDERS,
+  createNoteSort,
+} from "../utils/noteSorting.js";
 
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
 
@@ -34,6 +40,22 @@ export const validateNoteSearchQuery = (req, _res, next) => {
   }
 
   req.noteSearchTerm = normalizedQuery;
+  return next();
+};
+
+export const validateNoteSortQuery = (req, _res, next) => {
+  const sortBy = req.query?.sortBy ?? DEFAULT_NOTE_SORT.sortBy;
+  const sortOrder = req.query?.sortOrder ?? DEFAULT_NOTE_SORT.sortOrder;
+
+  if (typeof sortBy !== "string" || !NOTE_SORT_FIELDS.includes(sortBy)) {
+    return next(badRequest("Sort field must be one of: " + NOTE_SORT_FIELDS.join(", ")));
+  }
+
+  if (typeof sortOrder !== "string" || !NOTE_SORT_ORDERS.includes(sortOrder)) {
+    return next(badRequest("Sort order must be either asc or desc"));
+  }
+
+  req.noteSort = createNoteSort(sortBy, sortOrder);
   return next();
 };
 

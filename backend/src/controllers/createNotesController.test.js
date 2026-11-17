@@ -73,7 +73,18 @@ test("list endpoint returns the standard success envelope", async () => {
     message: "Notes found successfully",
     data: [note],
   });
-  assert.deepEqual(calls.sort, { createdAt: -1 });
+  assert.deepEqual(calls.sort, { createdAt: -1, _id: -1 });
+});
+
+test("list endpoint applies a validated sort", async () => {
+  const { model, calls } = createModel();
+  const { response, error } = await invoke(createNotesController(model).getNotes, {
+    noteSort: { title: 1, _id: 1 },
+  });
+
+  assert.equal(error, undefined);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls.sort, { title: 1, _id: 1 });
 });
 
 test("list endpoint returns an empty array when no notes exist", async () => {

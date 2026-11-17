@@ -6,6 +6,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 
 - Create, view, edit, and delete notes
 - Search notes by title and description
+- Sort notes by creation date, update date, or title
 - Responsive React interface with loading, empty, and toast feedback states
 - MongoDB persistence with Mongoose
 - Express API with request rate limiting
@@ -119,12 +120,16 @@ Errors use the same top-level keys with `success: false` and `data: null`. Unexp
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/notes` | List notes |
+| GET | `/api/notes` | List notes (newest first by default) |
 | GET | `/api/notes?q=project` | Search titles and descriptions (case-insensitive, maximum 100 characters) |
+| GET | `/api/notes?sortBy=title&sortOrder=asc` | Sort by `createdAt`, `updatedAt`, or `title`, in `asc` or `desc` order |
+| GET | `/api/notes?q=project&sortBy=updatedAt&sortOrder=desc` | Combine search and sorting |
 | GET | `/api/notes/:id` | Read one note |
 | POST | `/api/notes` | Create a note |
 | PUT | `/api/notes/:id` | Update a note |
 | DELETE | `/api/notes/:id` | Delete a note |
+
+The sort field and direction are allowlisted and validated before the database query. A matching `_id` tie-breaker keeps results deterministic when primary sort values are equal.
 
 ## Privacy and AI roadmap
 
