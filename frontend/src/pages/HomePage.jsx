@@ -7,7 +7,7 @@ import Navbar from '../components/Navbar'
 import NoteCard from '../components/NoteCard'
 import { useNotes } from '../context/useNotes'
 import { useRateLimit } from '../context/useRateLimit'
-import { DEFAULT_NOTE_SORT_VALUE, NOTE_SORT_OPTIONS, parseNoteSortValue } from '../utils/noteSort'
+import { NOTE_SORT_OPTIONS, parseNoteSortValue } from '../utils/noteSort'
 
 const MotionMain = motion.main
 const MotionDiv = motion.div
@@ -18,6 +18,7 @@ function HomePage() {
     loading,
     fetchError,
     fetchNotes,
+    sortOptions,
     searchResults,
     searchLoading,
     searchError,
@@ -26,7 +27,7 @@ function HomePage() {
   } = useNotes()
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortValue, setSortValue] = useState(DEFAULT_NOTE_SORT_VALUE)
+  const sortValue = `${sortOptions.sortBy}:${sortOptions.sortOrder}`
   const [searchDebouncing, setSearchDebouncing] = useState(false)
   const searchTimerRef = useRef(null)
   const isSearching = searchTerm.trim().length > 0
@@ -42,6 +43,7 @@ function HomePage() {
 
   const handleSearchChange = (event) => {
     const nextQuery = event.target.value
+    const currentSort = parseNoteSortValue(sortValue)
     setSearchTerm(nextQuery)
     searchNotes('')
 
@@ -52,13 +54,14 @@ function HomePage() {
     if (!nextQuery.trim()) {
       setSearchDebouncing(false)
       searchTimerRef.current = null
+      fetchNotes(currentSort)
       return
     }
 
     setSearchDebouncing(true)
     searchTimerRef.current = window.setTimeout(() => {
       setSearchDebouncing(false)
-      searchNotes(nextQuery, parseNoteSortValue(sortValue))
+      searchNotes(nextQuery, currentSort)
       searchTimerRef.current = null
     }, 250)
   }
@@ -66,8 +69,6 @@ function HomePage() {
   const handleSortChange = (event) => {
     const nextSortValue = event.target.value
     const sortOptions = parseNoteSortValue(nextSortValue)
-    setSortValue(nextSortValue)
-
     if (searchTimerRef.current) {
       window.clearTimeout(searchTimerRef.current)
       searchTimerRef.current = null

@@ -17,18 +17,24 @@ export function NotesProvider({ children }) {
   const [searchResults, setSearchResults] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(null)
+  const [sortOptions, setSortOptions] = useState(DEFAULT_SORT_OPTIONS)
   const hasFetchedRef = useRef(false)
   const listRequestRef = useRef(0)
   const searchRequestRef = useRef(0)
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
 
-  const fetchNotes = useCallback(async (sortOptions = DEFAULT_SORT_OPTIONS) => {
+  const fetchNotes = useCallback(async (nextSortOptions = sortOptions) => {
     const requestId = ++listRequestRef.current
+    searchRequestRef.current += 1
+    setSearchResults(null)
+    setSearchError(null)
+    setSearchLoading(false)
+    setSortOptions(nextSortOptions)
     try {
       setLoading(true)
       setFetchError(null)
 
-      const data = await getNotes('', sortOptions)
+      const data = await getNotes('', nextSortOptions)
       if (requestId !== listRequestRef.current) return
       setNotes(data)
       clearRateLimit()
@@ -44,7 +50,7 @@ export function NotesProvider({ children }) {
     } finally {
       if (requestId === listRequestRef.current) setLoading(false)
     }
-  }, [clearRateLimit, handleRateLimitError])
+  }, [clearRateLimit, handleRateLimitError, sortOptions])
 
   useEffect(() => {
     if (hasFetchedRef.current) {
@@ -55,7 +61,7 @@ export function NotesProvider({ children }) {
     fetchNotes()
   }, [fetchNotes])
 
-  const searchNotes = useCallback(async (query, sortOptions = DEFAULT_SORT_OPTIONS) => {
+  const searchNotes = useCallback(async (query, nextSortOptions = sortOptions) => {
     const requestId = ++searchRequestRef.current
     const normalizedQuery = query.trim()
 
@@ -67,10 +73,13 @@ export function NotesProvider({ children }) {
       return
     }
 
+    listRequestRef.current += 1
+    setLoading(false)
+    setSortOptions(nextSortOptions)
     setSearchLoading(true)
 
     try {
-      const results = await getNotes(normalizedQuery, sortOptions)
+      const results = await getNotes(normalizedQuery, nextSortOptions)
       if (requestId === searchRequestRef.current) {
         setSearchResults(results)
         clearRateLimit()
@@ -84,7 +93,7 @@ export function NotesProvider({ children }) {
         setSearchLoading(false)
       }
     }
-  }, [clearRateLimit, handleRateLimitError])
+  }, [clearRateLimit, handleRateLimitError, sortOptions])
 
   const createNote = useCallback(async ({ title, description }) => {
     const tempId = `temp-${crypto.randomUUID()}`
@@ -164,6 +173,7 @@ export function NotesProvider({ children }) {
     searchResults,
     searchLoading,
     searchError,
+    sortOptions,
     searchNotes,
     getNoteById,
     createNote,
@@ -177,6 +187,7 @@ export function NotesProvider({ children }) {
     searchResults,
     searchLoading,
     searchError,
+    sortOptions,
     searchNotes,
     getNoteById,
     createNote,

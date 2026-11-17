@@ -99,6 +99,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 ## Changelog
 
 - 2026-11-17: Added allowlisted server-side sorting by creation date, update date, or title; wired five sort choices into the home-page list and search requests; added validation and regression tests. Live MongoDB-backed browser CRUD verification remains pending.
+- 2026-11-17: Kept the selected sort mode consistent across navigation, cancelled stale list/search requests when switching modes, and reloads the active sorted list when search is cleared.
 - 2026-11-15: Added bounded, case-insensitive title/description search with literal regex escaping, API validation, debounced frontend search, stale-response protection, tests, and API documentation; live MongoDB-backed browser CRUD verification remains pending.
 - 2026-11-12: Extracted note-route registration and added deterministic route-stack tests for CRUD, validation, response envelopes, and missing records; live MongoDB-backed HTTP/browser verification remains pending.
 - 2026-11-11: Fixed direct note-detail routes redirecting during the initial notes fetch and added frontend state-resolution tests; live MongoDB-backed browser-to-API CRUD verification remains pending.
