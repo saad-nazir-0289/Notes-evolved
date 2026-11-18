@@ -7,6 +7,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Create, view, edit, and delete notes
 - Search notes by title and description
 - Sort notes by creation date, update date, or title
+- Paginate note lists and search results (12 notes per page)
 - Responsive React interface with loading, empty, and toast feedback states
 - MongoDB persistence with Mongoose
 - Express API with request rate limiting
@@ -130,6 +131,8 @@ Errors use the same top-level keys with `success: false` and `data: null`. Unexp
 | DELETE | `/api/notes/:id` | Delete a note |
 
 The sort field and direction are allowlisted and validated before the database query. A matching `_id` tie-breaker keeps results deterministic when primary sort values are equal.
+
+The home page currently paginates the fetched list and search results in the browser, showing 12 notes per page. The API still returns all matching notes; server-side pagination remains a planned improvement for larger collections.
 
 ## Privacy and AI roadmap
 

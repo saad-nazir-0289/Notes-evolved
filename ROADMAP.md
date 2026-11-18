@@ -30,6 +30,8 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
   - [x] Validate sort fields and directions against server-side allowlists.
   - [x] Add a stable `_id` tie-breaker and connect the home-page sort control to both list and search requests.
 - [ ] Add pagination.
+  - [x] Add accessible client-side page navigation for note lists and search results (12 notes per page).
+  - [ ] Add bounded server-side pagination and total-count metadata for larger collections.
 - [ ] Add pin and archive behavior.
 - [ ] Add user authentication with JWT and hashed passwords.
 - [ ] Enforce per-user note ownership.
@@ -98,6 +100,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-18: Added accessible client-side pagination for sorted notes and search results, with page resets on search/sort changes and safe page adjustment after deleting the final item on a page. Server-side pagination remains planned.
 - 2026-11-17: Added allowlisted server-side sorting by creation date, update date, or title; wired five sort choices into the home-page list and search requests; added validation and regression tests. Live MongoDB-backed browser CRUD verification remains pending.
 - 2026-11-17: Kept the selected sort mode consistent across navigation, cancelled stale list/search requests when switching modes, and reloads the active sorted list when search is cleared.
 - 2026-11-17: Refreshes the active sorted list when returning to the home page after a search session, keeping the sort selector aligned with displayed notes.
