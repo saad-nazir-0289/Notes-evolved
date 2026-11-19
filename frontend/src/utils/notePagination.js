@@ -1,26 +1,31 @@
 export const NOTE_PAGE_SIZE = 12
+export const NOTE_MAX_PAGE_SIZE = 50
 
-export const paginateNotes = (notes, page = 1, pageSize = NOTE_PAGE_SIZE) => {
-  const collection = Array.isArray(notes) ? notes : []
-  const normalizedPageSize = Number.isSafeInteger(pageSize) && pageSize > 0
-    ? pageSize
+const isPositiveSafeInteger = (value) => Number.isSafeInteger(value) && value > 0
+
+export const normalizeNotePagination = (meta, notes = []) => {
+  const pageSize = isPositiveSafeInteger(meta?.limit) && meta.limit <= NOTE_MAX_PAGE_SIZE
+    ? meta.limit
     : NOTE_PAGE_SIZE
-  const total = collection.length
-  const totalPages = Math.ceil(total / normalizedPageSize)
-  const requestedPage = Number.isSafeInteger(page) && page > 0 ? page : 1
-  const normalizedPage = Math.min(requestedPage, Math.max(totalPages, 1))
-  const startIndex = (normalizedPage - 1) * normalizedPageSize
-  const endIndex = Math.min(startIndex + normalizedPageSize, total)
+  const total = Number.isSafeInteger(meta?.total) && meta.total >= 0
+    ? meta.total
+    : notes.length
+  const totalPages = Math.ceil(total / pageSize)
+  const requestedPage = isPositiveSafeInteger(meta?.page) ? meta.page : 1
+  const page = Math.min(requestedPage, Math.max(totalPages, 1))
+  const startIndex = total === 0 || notes.length === 0 ? 0 : ((page - 1) * pageSize) + 1
+  const endIndex = startIndex === 0
+    ? 0
+    : Math.min(startIndex + Math.min(notes.length, pageSize) - 1, total)
 
   return {
-    items: collection.slice(startIndex, endIndex),
-    page: normalizedPage,
-    pageSize: normalizedPageSize,
+    page,
+    pageSize,
     total,
     totalPages,
     startIndex,
     endIndex,
-    hasPreviousPage: normalizedPage > 1,
-    hasNextPage: normalizedPage < totalPages,
+    hasPreviousPage: page > 1,
+    hasNextPage: page < totalPages,
   }
 }

@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion'
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import NoteDetailPanel from "../components/NoteDetailPanel"
 import PageHeader from "../components/PageHeader"
+import { getNote as getNoteApi } from "../api/notes"
 import { useNotes } from "../context/useNotes"
 import { useRateLimit } from "../context/useRateLimit"
 import { getNoteDetailState } from "../utils/noteDetailState"
@@ -16,14 +17,50 @@ function NoteDetailPage() {
   const { noteId } = useParams()
   const { getNoteById, updateNote, deleteNote, loading } = useNotes()
   const { handleRateLimitError } = useRateLimit()
-
-  const note = getNoteById(noteId)
-  const detailState = getNoteDetailState({ isLoading: loading, note })
+  const cachedNote = getNoteById(noteId)
+  const [detailResult, setDetailResult] = useState({ noteId: null, status: 'loading', note: null })
+  const currentDetailResult = detailResult.noteId === noteId
+    ? detailResult
+    : { status: 'loading', note: null }
+  const note = cachedNote ?? currentDetailResult.note
+  const isResolvingNote = !cachedNote
+    && !currentDetailResult.note
+    && !['not-found', 'error'].includes(currentDetailResult.status)
+  const detailState = getNoteDetailState({ isLoading: loading || isResolvingNote, note })
 
   const [isEditing, setIsEditing] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (cachedNote) {
+      setDetailResult({ noteId, status: 'ready', note: null })
+      return undefined
+    }
+
+    if (loading) return undefined
+
+    let cancelled = false
+    setDetailResult({ noteId, status: 'loading', note: null })
+
+    getNoteApi(noteId)
+      .then((fetchedNote) => {
+        if (!cancelled) setDetailResult({ noteId, status: 'ready', note: fetchedNote })
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setDetailResult({
+          noteId,
+          status: error.response?.status === 404 ? 'not-found' : 'error',
+          note: null,
+        })
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [cachedNote, loading, noteId])
 
   if (detailState === "loading") {
     return (
@@ -45,9 +82,20 @@ function NoteDetailPage() {
     )
   }
 
-  if (detailState === "missing") {
-    return <Navigate to="/" replace />
+  if (!note && currentDetailResult.status === 'error') {
+    return (
+      <>
+        <Navbar />
+        <MotionMain className="page-wrap py-4 sm:py-6">
+          <div className="glass-panel p-4 text-sm text-ink-700" role="alert">
+            Unable to load this note right now. Please try again.
+          </div>
+        </MotionMain>
+      </>
+    )
   }
+
+  if (detailState === "missing") return <Navigate to="/" replace />
 
   const handleStartEdit = () => {
     setTitle(note.title)
@@ -57,7 +105,6 @@ function NoteDetailPage() {
 
   const handleSave = async (event) => {
     event.preventDefault()
-
     if (!title.trim() || !description.trim()) {
       toast.error("Please fill in both title and description")
       return
@@ -65,11 +112,11 @@ function NoteDetailPage() {
 
     try {
       setSubmitting(true)
-      await updateNote(note.id, {
+      const updatedNote = await updateNote(note.id, {
         title: title.trim(),
         description: description.trim(),
       })
-
+      setDetailResult({ noteId, status: 'ready', note: updatedNote })
       setIsEditing(false)
       toast.success("Note updated successfully")
     } catch (error) {

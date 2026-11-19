@@ -1,61 +1,54 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { NOTE_PAGE_SIZE, paginateNotes } from './notePagination.js'
+import { NOTE_PAGE_SIZE, normalizeNotePagination } from './notePagination.js'
 
 const createNotes = (count) => Array.from({ length: count }, (_, index) => ({ id: index + 1 }))
 
-test('uses a bounded default page size and returns the first page', () => {
-  const notes = createNotes(25)
-  const result = paginateNotes(notes)
+test('normalizes server pagination metadata for the first page', () => {
+  const notes = createNotes(12)
+  const result = normalizeNotePagination({ page: 1, limit: 12, total: 25, totalPages: 3 }, notes)
 
-  assert.equal(NOTE_PAGE_SIZE, 12)
-  assert.deepEqual(result.items, notes.slice(0, 12))
   assert.equal(result.page, 1)
+  assert.equal(result.pageSize, NOTE_PAGE_SIZE)
+  assert.equal(result.total, 25)
   assert.equal(result.totalPages, 3)
-  assert.equal(result.startIndex, 0)
+  assert.equal(result.startIndex, 1)
   assert.equal(result.endIndex, 12)
   assert.equal(result.hasPreviousPage, false)
   assert.equal(result.hasNextPage, true)
 })
 
-test('returns only the remaining notes on the final page', () => {
-  const notes = createNotes(25)
-  const result = paginateNotes(notes, 3)
-
-  assert.deepEqual(result.items, notes.slice(24))
-  assert.equal(result.page, 3)
-  assert.equal(result.startIndex, 24)
+test('calculates correct ranges for a partial final page', () => {
+  const result = normalizeNotePagination({ page: 3, limit: 12, total: 25 }, createNotes(1))
+  assert.equal(result.startIndex, 25)
   assert.equal(result.endIndex, 25)
   assert.equal(result.hasPreviousPage, true)
   assert.equal(result.hasNextPage, false)
 })
 
-test('clamps an out-of-range page after a collection shrinks', () => {
-  const notes = createNotes(13)
-  const result = paginateNotes(notes, 3)
-
+test('clamps stale page metadata when the collection shrinks', () => {
+  const result = normalizeNotePagination({ page: 9, limit: 12, total: 13 }, createNotes(1))
   assert.equal(result.page, 2)
-  assert.deepEqual(result.items, notes.slice(12))
-  assert.equal(result.hasNextPage, false)
+  assert.equal(result.totalPages, 2)
+  assert.equal(result.startIndex, 13)
 })
 
-test('handles empty collections without exposing an invalid page', () => {
-  const result = paginateNotes([], 8)
-
-  assert.deepEqual(result.items, [])
+test('handles empty results and invalid metadata safely', () => {
+  const result = normalizeNotePagination({ page: -1, limit: 500, total: -4 }, [])
   assert.equal(result.page, 1)
+  assert.equal(result.pageSize, NOTE_PAGE_SIZE)
+  assert.equal(result.total, 0)
   assert.equal(result.totalPages, 0)
   assert.equal(result.startIndex, 0)
   assert.equal(result.endIndex, 0)
-  assert.equal(result.hasPreviousPage, false)
   assert.equal(result.hasNextPage, false)
 })
 
-test('falls back safely for invalid page and page-size values', () => {
-  const notes = createNotes(14)
-  const result = paginateNotes(notes, Number.POSITIVE_INFINITY, 0)
-
+test('falls back to a single page for legacy array-only responses', () => {
+  const notes = createNotes(3)
+  const result = normalizeNotePagination(null, notes)
+  assert.equal(result.total, 3)
   assert.equal(result.page, 1)
-  assert.equal(result.pageSize, NOTE_PAGE_SIZE)
-  assert.deepEqual(result.items, notes.slice(0, NOTE_PAGE_SIZE))
+  assert.equal(result.endIndex, 3)
+  assert.equal(result.totalPages, 1)
 })

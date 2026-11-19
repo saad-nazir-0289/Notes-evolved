@@ -1,4 +1,5 @@
 import api from "./axios"
+import { NOTE_PAGE_SIZE, normalizeNotePagination } from "../utils/notePagination"
 
 const normalizeNote = (note) => ({
     id: note._id,
@@ -8,13 +9,26 @@ const normalizeNote = (note) => ({
     updatedAt: note.updatedAt,
 })
 
-export const getNotes = async (searchTerm = "", sortOptions = {}) => {
+export const getNotes = async (searchTerm = "", sortOptions = {}, paginationOptions = {}) => {
+    const page = paginationOptions.page ?? 1
+    const limit = paginationOptions.limit ?? NOTE_PAGE_SIZE
     const params = {
         ...(searchTerm ? { q: searchTerm } : {}),
         ...sortOptions,
+        page,
+        limit,
     }
     const response = await api.get("/notes", { params })
-    return response.data.data.map(normalizeNote)
+    const notes = response.data.data.map(normalizeNote)
+    return {
+        notes,
+        pagination: normalizeNotePagination(response.data.meta?.pagination, notes),
+    }
+}
+
+export const getNote = async (id) => {
+    const response = await api.get("/notes/" + id)
+    return normalizeNote(response.data.data)
 }
 
 export const createNote = async (noteData) => {

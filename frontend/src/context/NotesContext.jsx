@@ -6,71 +6,73 @@ import {
   getNotes,
   updateNote as updateNoteApi,
 } from '../api/notes'
+import { normalizeNotePagination } from '../utils/notePagination'
 import { useRateLimit } from './useRateLimit'
 
 const DEFAULT_SORT_OPTIONS = { sortBy: 'createdAt', sortOrder: 'desc' }
+const EMPTY_PAGINATION = normalizeNotePagination(null, [])
 
 export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([])
+  const [notesPagination, setNotesPagination] = useState(EMPTY_PAGINATION)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(null)
   const [searchResults, setSearchResults] = useState(null)
+  const [searchPagination, setSearchPagination] = useState(EMPTY_PAGINATION)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [sortOptions, setSortOptions] = useState(DEFAULT_SORT_OPTIONS)
   const hasFetchedRef = useRef(false)
   const listRequestRef = useRef(0)
   const searchRequestRef = useRef(0)
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
 
-  const fetchNotes = useCallback(async (nextSortOptions = sortOptions) => {
+  const fetchNotes = useCallback(async (nextSortOptions = sortOptions, page = 1) => {
     const requestId = ++listRequestRef.current
     searchRequestRef.current += 1
     setSearchResults(null)
+    setSearchPagination(EMPTY_PAGINATION)
+    setSearchQuery('')
     setSearchError(null)
     setSearchLoading(false)
     setSortOptions(nextSortOptions)
     try {
       setLoading(true)
       setFetchError(null)
-
-      const data = await getNotes('', nextSortOptions)
-      if (requestId !== listRequestRef.current) return
-      setNotes(data)
+      const result = await getNotes('', nextSortOptions, { page })
+      if (requestId !== listRequestRef.current) return null
+      setNotes(result.notes)
+      setNotesPagination(result.pagination)
       clearRateLimit()
+      return result.pagination
     } catch (error) {
-      if (requestId !== listRequestRef.current) return
+      if (requestId !== listRequestRef.current) return null
       console.error('Error fetching notes:', error)
-
-      if (handleRateLimitError(error)) {
-        setFetchError('rate-limit')
-      } else {
-        setFetchError('general')
-      }
+      setFetchError(handleRateLimitError(error) ? 'rate-limit' : 'general')
+      return null
     } finally {
       if (requestId === listRequestRef.current) setLoading(false)
     }
   }, [clearRateLimit, handleRateLimitError, sortOptions])
 
   useEffect(() => {
-    if (hasFetchedRef.current) {
-      return
-    }
-
+    if (hasFetchedRef.current) return
     hasFetchedRef.current = true
     fetchNotes()
   }, [fetchNotes])
 
-  const searchNotes = useCallback(async (query, nextSortOptions = sortOptions) => {
+  const searchNotes = useCallback(async (query, nextSortOptions = sortOptions, page = 1) => {
     const requestId = ++searchRequestRef.current
     const normalizedQuery = query.trim()
-
     setSearchResults(null)
+    setSearchPagination(EMPTY_PAGINATION)
     setSearchError(null)
+    setSearchQuery(normalizedQuery)
 
     if (!normalizedQuery) {
       setSearchLoading(false)
-      return
+      return null
     }
 
     listRequestRef.current += 1
@@ -79,98 +81,59 @@ export function NotesProvider({ children }) {
     setSearchLoading(true)
 
     try {
-      const results = await getNotes(normalizedQuery, nextSortOptions)
-      if (requestId === searchRequestRef.current) {
-        setSearchResults(results)
-        clearRateLimit()
-      }
+      const result = await getNotes(normalizedQuery, nextSortOptions, { page })
+      if (requestId !== searchRequestRef.current) return null
+      setSearchResults(result.notes)
+      setSearchPagination(result.pagination)
+      clearRateLimit()
+      return result.pagination
     } catch (error) {
       if (requestId === searchRequestRef.current) {
         setSearchError(handleRateLimitError(error) ? 'rate-limit' : 'general')
       }
+      return null
     } finally {
-      if (requestId === searchRequestRef.current) {
-        setSearchLoading(false)
-      }
+      if (requestId === searchRequestRef.current) setSearchLoading(false)
     }
   }, [clearRateLimit, handleRateLimitError, sortOptions])
 
   const createNote = useCallback(async ({ title, description }) => {
-    const tempId = `temp-${crypto.randomUUID()}`
-    const optimisticNote = {
-      id: tempId,
-      title,
-      description,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    setNotes((currentNotes) => [optimisticNote, ...currentNotes])
-
-    try {
-      const newNote = await createNoteApi({ title, description })
-      setNotes((currentNotes) => currentNotes.map((note) => (note.id === tempId ? newNote : note)))
-      return newNote
-    } catch (error) {
-      setNotes((currentNotes) => currentNotes.filter((note) => note.id !== tempId))
-      throw error
-    }
-  }, [])
+    const newNote = await createNoteApi({ title, description })
+    await fetchNotes(sortOptions, 1)
+    return newNote
+  }, [fetchNotes, sortOptions])
 
   const updateNote = useCallback(async (id, payload) => {
-    const previousNote = notes.find((note) => note.id === id)
-    const optimisticNote = previousNote
-      ? {
-          ...previousNote,
-          ...payload,
-          updatedAt: new Date().toISOString(),
-        }
-      : null
+    const updatedNote = await updateNoteApi(id, payload)
+    setNotes((currentNotes) => currentNotes.map((note) => (note.id === id ? updatedNote : note)))
+    setSearchResults((currentResults) =>
+      currentResults?.map((note) => (note.id === id ? updatedNote : note)) ?? currentResults,
+    )
 
-    if (optimisticNote) {
-      setNotes((currentNotes) =>
-        currentNotes.map((note) => (note.id === id ? optimisticNote : note)),
-      )
-    }
+    if (searchQuery) await searchNotes(searchQuery, sortOptions, searchPagination.page)
+    else await fetchNotes(sortOptions, notesPagination.page)
 
-    try {
-      const updatedNote = await updateNoteApi(id, payload)
-
-      setNotes((currentNotes) =>
-        currentNotes.map((note) => (note.id === id ? updatedNote : note)),
-      )
-
-      return updatedNote
-    } catch (error) {
-      if (previousNote) {
-        setNotes((currentNotes) => currentNotes.map((note) => (note.id === id ? previousNote : note)))
-      }
-
-      throw error
-    }
-  }, [notes])
+    return updatedNote
+  }, [fetchNotes, notesPagination.page, searchNotes, searchPagination.page, searchQuery, sortOptions])
 
   const deleteNote = useCallback(async (id) => {
-    const previousNotes = notes
-    setNotes((currentNotes) => currentNotes.filter((note) => note.id !== id))
+    await deleteNoteApi(id)
+    if (searchQuery) await searchNotes(searchQuery, sortOptions, searchPagination.page)
+    else await fetchNotes(sortOptions, notesPagination.page)
+  }, [fetchNotes, notesPagination, searchNotes, searchPagination, searchQuery, sortOptions])
 
-    try {
-      await deleteNoteApi(id)
-      setSearchResults((currentResults) => currentResults?.filter((note) => note.id !== id) ?? currentResults)
-    } catch (error) {
-      setNotes(previousNotes)
-      throw error
-    }
-  }, [notes])
-
-  const getNoteById = useCallback((id) => notes.find((note) => note.id === id), [notes])
+  const getNoteById = useCallback((id) => (
+    notes.find((note) => note.id === id) ?? searchResults?.find((note) => note.id === id)
+  ), [notes, searchResults])
 
   const value = useMemo(() => ({
     notes,
+    notesPagination,
     loading,
     fetchError,
     fetchNotes,
     searchResults,
+    searchPagination,
     searchLoading,
     searchError,
     sortOptions,
@@ -181,10 +144,12 @@ export function NotesProvider({ children }) {
     deleteNote,
   }), [
     notes,
+    notesPagination,
     loading,
     fetchError,
     fetchNotes,
     searchResults,
+    searchPagination,
     searchLoading,
     searchError,
     sortOptions,
@@ -194,7 +159,6 @@ export function NotesProvider({ children }) {
     updateNote,
     deleteNote,
   ])
-
 
   return <NotesContext.Provider value={value}>{children}</NotesContext.Provider>
 }

@@ -1,3 +1,6 @@
 export const NOTE_TITLE_MAX_LENGTH = 120;
 export const NOTE_DESCRIPTION_MAX_LENGTH = 50000;
 export const NOTE_SEARCH_MAX_LENGTH = 100;
+export const NOTE_DEFAULT_PAGE_SIZE = 12;
+export const NOTE_MAX_PAGE_SIZE = 50;
+export const NOTE_MAX_SKIP = 1000000;

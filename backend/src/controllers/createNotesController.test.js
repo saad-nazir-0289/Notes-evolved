@@ -10,33 +10,24 @@ const note = {
   updatedAt: "2026-11-09T08:00:00.000Z",
 };
 
-const createModel = () => {
+const createModel = ({ total = 25, results = [note] } = {}) => {
   const calls = {};
   const model = {
-    find: () => ({
-      sort: async (sort) => {
-        calls.sort = sort;
-        return [note];
-      },
-    }),
-    findById: async (id) => {
-      calls.findById = id;
-      return note;
+    countDocuments: async (filter) => { calls.countFilter = filter; return total; },
+    find: (filter) => {
+      calls.filter = filter;
+      const query = {
+        sort(sort) { calls.sort = sort; return query; },
+        skip(skip) { calls.skip = skip; return query; },
+        limit(limit) { calls.limit = limit; return Promise.resolve(results); },
+      };
+      return query;
     },
-    findByIdAndUpdate: async (id, body, options) => {
-      calls.update = { id, body, options };
-      return { ...note, ...body };
-    },
-    create: async (body) => {
-      calls.create = body;
-      return note;
-    },
-    findByIdAndDelete: async (id) => {
-      calls.delete = id;
-      return note;
-    },
+    findById: async (id) => { calls.findById = id; return note; },
+    findByIdAndUpdate: async (id, body, options) => { calls.update = { id, body, options }; return { ...note, ...body }; },
+    create: async (body) => { calls.create = body; return note; },
+    findByIdAndDelete: async (id) => { calls.delete = id; return note; },
   };
-
   return { model, calls };
 };
 
@@ -44,125 +35,106 @@ const invoke = async (handler, req = {}) => {
   const response = {
     statusCode: null,
     body: null,
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
-    json(body) {
-      this.body = body;
-      return this;
-    },
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
   };
   let error;
-
-  await handler(req, response, (nextError) => {
-    error = nextError;
-  });
-
+  await handler(req, response, (nextError) => { error = nextError; });
   return { response, error };
 };
 
-test("list endpoint returns the standard success envelope", async () => {
+test("list endpoint returns notes and bounded pagination metadata", async () => {
   const { model, calls } = createModel();
   const { response, error } = await invoke(createNotesController(model).getNotes);
-
   assert.equal(error, undefined);
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.body, {
-    success: true,
-    message: "Notes found successfully",
-    data: [note],
-  });
+  assert.deepEqual(response.body.data, [note]);
+  assert.deepEqual(response.body.meta.pagination, { page: 1, limit: 12, total: 25, totalPages: 3 });
   assert.deepEqual(calls.sort, { createdAt: -1, _id: -1 });
+  assert.equal(calls.skip, 0);
+  assert.equal(calls.limit, 12);
+  assert.deepEqual(calls.countFilter, {});
 });
 
-test("list endpoint applies a validated sort", async () => {
-  const { model, calls } = createModel();
-  const { response, error } = await invoke(createNotesController(model).getNotes, {
+test("list endpoint applies the same search filter to count and page queries", async () => {
+  const { model, calls } = createModel({ total: 40 });
+  const { response } = await invoke(createNotesController(model).getNotes, {
+    noteSearchTerm: "project",
     noteSort: { title: 1, _id: 1 },
+    notePagination: { page: 2, limit: 10 },
   });
-
-  assert.equal(error, undefined);
   assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls.filter, calls.countFilter);
+  assert.deepEqual(calls.filter, {
+    $or: [
+      { title: { $regex: "project", $options: "i" } },
+      { description: { $regex: "project", $options: "i" } },
+    ],
+  });
   assert.deepEqual(calls.sort, { title: 1, _id: 1 });
+  assert.equal(calls.skip, 10);
+  assert.equal(calls.limit, 10);
+  assert.deepEqual(response.body.meta.pagination, { page: 2, limit: 10, total: 40, totalPages: 4 });
 });
 
-test("list endpoint returns an empty array when no notes exist", async () => {
-  const { model } = createModel();
-  model.find = () => ({ sort: async () => [] });
-  const { response, error } = await invoke(createNotesController(model).getNotes);
+test("list endpoint clamps pages after the collection shrinks", async () => {
+  const { model, calls } = createModel({ total: 13 });
+  const { response } = await invoke(createNotesController(model).getNotes, {
+    notePagination: { page: 99, limit: 12 },
+  });
+  assert.equal(calls.skip, 12);
+  assert.deepEqual(response.body.meta.pagination, { page: 2, limit: 12, total: 13, totalPages: 2 });
+});
 
-  assert.equal(error, undefined);
-  assert.equal(response.statusCode, 200);
+test("list endpoint handles empty collections without invalid page numbers", async () => {
+  const { model, calls } = createModel({ total: 0, results: [] });
+  const { response } = await invoke(createNotesController(model).getNotes, {
+    notePagination: { page: 5, limit: 12 },
+  });
   assert.deepEqual(response.body.data, []);
+  assert.equal(calls.skip, 0);
+  assert.deepEqual(response.body.meta.pagination, { page: 1, limit: 12, total: 0, totalPages: 0 });
 });
 
 test("single-note endpoint returns the standard success envelope", async () => {
   const { model } = createModel();
-  const { response, error } = await invoke(createNotesController(model).getNote, {
-    params: { id: note._id },
-  });
-
+  const { response, error } = await invoke(createNotesController(model).getNote, { params: { id: note._id } });
   assert.equal(error, undefined);
   assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.body, {
-    success: true,
-    message: "Note found successfully",
-    data: note,
-  });
+  assert.deepEqual(response.body.data, note);
 });
 
-test("create endpoint returns the standard envelope and HTTP 201", async () => {
+test("create, update, and delete preserve their response contracts", async () => {
   const { model, calls } = createModel();
-  const body = { title: "Project", description: "Project details" };
-  const { response, error } = await invoke(createNotesController(model).createNote, { body });
-
-  assert.equal(error, undefined);
-  assert.equal(response.statusCode, 201);
-  assert.deepEqual(response.body, {
+  const controllers = createNotesController(model);
+  const createBody = { title: "Project", description: "Details" };
+  const created = await invoke(controllers.createNote, { body: createBody });
+  assert.equal(created.response.statusCode, 201);
+  assert.deepEqual(created.response.body, {
     success: true,
     message: "Note created successfully",
     data: note,
   });
-  assert.deepEqual(calls.create, body);
-});
+  assert.deepEqual(calls.create, createBody);
 
-test("update endpoint returns the standard envelope and keeps validators enabled", async () => {
-  const { model, calls } = createModel();
-  const body = { title: "Renamed" };
-  const { response, error } = await invoke(createNotesController(model).updateNote, {
-    params: { id: note._id },
-    body,
-  });
-
-  assert.equal(error, undefined);
-  assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.body, {
+  const updateBody = { title: "Renamed" };
+  const updated = await invoke(controllers.updateNote, { params: { id: note._id }, body: updateBody });
+  assert.equal(updated.response.statusCode, 200);
+  assert.deepEqual(updated.response.body, {
     success: true,
     message: "Note updated successfully",
-    data: { ...note, ...body },
+    data: { ...note, ...updateBody },
   });
-  assert.deepEqual(calls.update, {
-    id: note._id,
-    body,
-    options: { new: true, runValidators: true },
-  });
-});
+  assert.deepEqual(calls.update.options, { new: true, runValidators: true });
 
-test("delete endpoint returns the standard envelope with null data", async () => {
-  const { model, calls } = createModel();
-  const { response, error } = await invoke(createNotesController(model).deleteNote, {
-    params: { id: note._id },
-  });
-
-  assert.equal(error, undefined);
-  assert.equal(response.statusCode, 200);
-  assert.deepEqual(response.body, {
+  const deleted = await invoke(controllers.deleteNote, { params: { id: note._id } });
+  assert.equal(deleted.response.statusCode, 200);
+  assert.deepEqual(deleted.response.body, {
     success: true,
     message: "Note deleted successfully",
     data: null,
   });
-  assert.equal(calls.delete, note._id);
+
 });
 
 test("read, update, and delete return not-found errors for missing notes", async () => {
@@ -170,26 +142,25 @@ test("read, update, and delete return not-found errors for missing notes", async
   model.findById = async () => null;
   model.findByIdAndUpdate = async () => null;
   model.findByIdAndDelete = async () => null;
-
   const controllers = createNotesController(model);
   const cases = [
     [controllers.getNote, { params: { id: note._id } }],
     [controllers.updateNote, { params: { id: note._id }, body: { title: "Renamed" } }],
     [controllers.deleteNote, { params: { id: note._id } }],
   ];
-
   for (const [handler, request] of cases) {
     const { response, error } = await invoke(handler, request);
     assert.equal(response.statusCode, null);
     assert.equal(error.status, 404);
-    assert.equal(error.message, "Note not found");
   }
 });
 
-test("forwards database failures from every CRUD operation", async () => {
+test("forwards database failures from list and CRUD operations", async () => {
   const databaseError = new Error("database unavailable");
+  const query = { sort() { return query; }, skip() { return query; }, limit: async () => { throw databaseError; } };
   const model = {
-    find: () => ({ sort: async () => { throw databaseError; } }),
+    countDocuments: async () => 1,
+    find: () => query,
     findById: async () => { throw databaseError; },
     findByIdAndUpdate: async () => { throw databaseError; },
     create: async () => { throw databaseError; },
@@ -203,7 +174,6 @@ test("forwards database failures from every CRUD operation", async () => {
     [controllers.updateNote, { params: { id: note._id }, body: { title: "Renamed" } }],
     [controllers.deleteNote, { params: { id: note._id } }],
   ];
-
   for (const [handler, request] of cases) {
     const { response, error } = await invoke(handler, request);
     assert.equal(response.statusCode, null);

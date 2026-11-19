@@ -1,4 +1,5 @@
 import asyncHandler from "../middleware/asyncHandler.js";
+import { NOTE_DEFAULT_PAGE_SIZE } from "../config/noteConstraints.js";
 import { successResponse } from "../utils/apiResponse.js";
 import { createNoteSearchFilter } from "../utils/noteSearch.js";
 import { createNoteSort } from "../utils/noteSorting.js";
@@ -9,17 +10,22 @@ export const createNotesController = (Note) => ({
   getNotes: asyncHandler(async (req, res) => {
     const filter = createNoteSearchFilter(req.noteSearchTerm);
     const sort = req.noteSort ?? createNoteSort();
-    const notes = await Note.find(filter).sort(sort);
-    return res.status(200).json(successResponse("Notes found successfully", notes));
+    const requestedPage = req.notePagination?.page ?? 1;
+    const limit = req.notePagination?.limit ?? NOTE_DEFAULT_PAGE_SIZE;
+    const total = await Note.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+    const page = Math.min(requestedPage, Math.max(totalPages, 1));
+    const skip = (page - 1) * limit;
+    const notes = await Note.find(filter).sort(sort).skip(skip).limit(limit);
+
+    return res.status(200).json(successResponse("Notes found successfully", notes, {
+      pagination: { page, limit, total, totalPages },
+    }));
   }),
 
   getNote: asyncHandler(async (req, res) => {
     const note = await Note.findById(req.params.id);
-
-    if (!note) {
-      throw noteNotFound();
-    }
-
+    if (!note) throw noteNotFound();
     return res.status(200).json(successResponse("Note found successfully", note));
   }),
 
@@ -28,11 +34,7 @@ export const createNotesController = (Note) => ({
       new: true,
       runValidators: true,
     });
-
-    if (!updatedNote) {
-      throw noteNotFound();
-    }
-
+    if (!updatedNote) throw noteNotFound();
     return res.status(200).json(successResponse("Note updated successfully", updatedNote));
   }),
 
@@ -43,11 +45,7 @@ export const createNotesController = (Note) => ({
 
   deleteNote: asyncHandler(async (req, res) => {
     const deletedNote = await Note.findByIdAndDelete(req.params.id);
-
-    if (!deletedNote) {
-      throw noteNotFound();
-    }
-
+    if (!deletedNote) throw noteNotFound();
     return res.status(200).json(successResponse("Note deleted successfully"));
   }),
 });

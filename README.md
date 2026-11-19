@@ -7,7 +7,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Create, view, edit, and delete notes
 - Search notes by title and description
 - Sort notes by creation date, update date, or title
-- Paginate note lists and search results (12 notes per page)
+- Server-side pagination for note lists and search results (12 notes by default, maximum 50 per page)
 - Responsive React interface with loading, empty, and toast feedback states
 - MongoDB persistence with Mongoose
 - Express API with request rate limiting
@@ -103,16 +103,26 @@ The Vite development server runs at [http://localhost:5173](http://localhost:517
 
 ## API
 
-All note endpoints return the same JSON envelope. Successful responses use `success: true`, a human-readable `message`, and a `data` field. The `data` value is an array for the list endpoint, a note object for read/create/update, and `null` after deletion.
+All note endpoints return the same JSON envelope. Successful responses use `success: true`, a human-readable `message`, and a `data` field. The list endpoint returns the current page as an array and includes pagination details in `meta.pagination`.
 
 ```json
 {
   "success": true,
-  "message": "Note found successfully",
-  "data": {
-    "_id": "507f1f77bcf86cd799439011",
-    "title": "Project",
-    "description": "Project details"
+  "message": "Notes found successfully",
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "title": "Project",
+      "description": "Project details"
+    }
+  ],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "limit": 12,
+      "total": 25,
+      "totalPages": 3
+    }
   }
 }
 ```
@@ -121,18 +131,18 @@ Errors use the same top-level keys with `success: false` and `data: null`. Unexp
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/notes` | List notes (newest first by default) |
-| GET | `/api/notes?q=project` | Search titles and descriptions (case-insensitive, maximum 100 characters) |
-| GET | `/api/notes?sortBy=title&sortOrder=asc` | Sort by `createdAt`, `updatedAt`, or `title`, in `asc` or `desc` order |
-| GET | `/api/notes?q=project&sortBy=updatedAt&sortOrder=desc` | Combine search and sorting |
+| GET | `/api/notes` | List the first page (12 notes by default, newest first) |
+| GET | `/api/notes?page=2&limit=12` | Request a specific page |
+| GET | `/api/notes?q=project&page=2&limit=12` | Search and paginate titles/descriptions (case-insensitive, maximum 100 search characters) |
+| GET | `/api/notes?sortBy=title&sortOrder=asc&page=1&limit=12` | Combine allowlisted sorting and pagination |
 | GET | `/api/notes/:id` | Read one note |
 | POST | `/api/notes` | Create a note |
 | PUT | `/api/notes/:id` | Update a note |
 | DELETE | `/api/notes/:id` | Delete a note |
 
-The sort field and direction are allowlisted and validated before the database query. A matching `_id` tie-breaker keeps results deterministic when primary sort values are equal.
+The `page` parameter must be a positive integer. `limit` defaults to 12 and is capped at 50. Requests whose calculated offset exceeds 1,000,000 are rejected to keep deep-offset queries bounded. If a requested page becomes out of range after records are removed, the API clamps it to the last available page. The total count uses the same search filter as the returned page.
 
-The home page currently paginates the fetched list and search results in the browser, showing 12 notes per page. The API still returns all matching notes; server-side pagination remains a planned improvement for larger collections.
+The sort field and direction are allowlisted and validated before the database query. Supported fields are `createdAt`, `updatedAt`, and `title`; directions are `asc` and `desc`. A matching `_id` tie-breaker keeps results deterministic when primary sort values are equal.
 
 ## Privacy and AI roadmap
 

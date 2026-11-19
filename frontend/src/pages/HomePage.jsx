@@ -8,7 +8,6 @@ import NoteCard from '../components/NoteCard'
 import { useNotes } from '../context/useNotes'
 import { useRateLimit } from '../context/useRateLimit'
 import { NOTE_SORT_OPTIONS, parseNoteSortValue } from '../utils/noteSort'
-import { paginateNotes } from '../utils/notePagination'
 
 const MotionMain = motion.main
 const MotionDiv = motion.div
@@ -16,11 +15,13 @@ const MotionDiv = motion.div
 function HomePage() {
   const {
     notes,
+    notesPagination,
     loading,
     fetchError,
     fetchNotes,
     sortOptions,
     searchResults,
+    searchPagination,
     searchLoading,
     searchError,
     searchNotes,
@@ -28,13 +29,12 @@ function HomePage() {
   } = useNotes()
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
   const [searchTerm, setSearchTerm] = useState('')
-  const sortValue = `${sortOptions.sortBy}:${sortOptions.sortOrder}`
+  const sortValue = sortOptions.sortBy + ':' + sortOptions.sortOrder
   const [searchDebouncing, setSearchDebouncing] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
   const searchTimerRef = useRef(null)
   const isSearching = searchTerm.trim().length > 0
   const displayedNotes = isSearching ? (searchResults ?? []) : notes
-  const pagination = paginateNotes(displayedNotes, currentPage)
+  const pagination = isSearching ? searchPagination : notesPagination
   const isLoading = loading || (isSearching && (searchDebouncing || searchLoading))
   const currentError = isSearching ? searchError : fetchError
 
@@ -46,7 +46,7 @@ function HomePage() {
 
   useEffect(() => {
     if (refreshListOnMountRef.current) {
-      fetchNotesOnMountRef.current(initialSortOptionsRef.current)
+      fetchNotesOnMountRef.current(initialSortOptionsRef.current, 1)
     }
   }, [])
 
@@ -60,7 +60,6 @@ function HomePage() {
     const nextQuery = event.target.value
     const currentSort = parseNoteSortValue(sortValue)
     setSearchTerm(nextQuery)
-    setCurrentPage(1)
     searchNotes('')
 
     if (searchTimerRef.current) {
@@ -70,39 +69,40 @@ function HomePage() {
     if (!nextQuery.trim()) {
       setSearchDebouncing(false)
       searchTimerRef.current = null
-      fetchNotes(currentSort)
+      fetchNotes(currentSort, 1)
       return
     }
 
     setSearchDebouncing(true)
     searchTimerRef.current = window.setTimeout(() => {
       setSearchDebouncing(false)
-      searchNotes(nextQuery, currentSort)
+      searchNotes(nextQuery, currentSort, 1)
       searchTimerRef.current = null
     }, 250)
   }
 
   const handleSortChange = (event) => {
     const nextSortValue = event.target.value
-    const sortOptions = parseNoteSortValue(nextSortValue)
-    setCurrentPage(1)
+    const nextSortOptions = parseNoteSortValue(nextSortValue)
     if (searchTimerRef.current) {
       window.clearTimeout(searchTimerRef.current)
       searchTimerRef.current = null
     }
     setSearchDebouncing(false)
 
-    if (isSearching) searchNotes(searchTerm, sortOptions)
-    else fetchNotes(sortOptions)
+    if (isSearching) searchNotes(searchTerm, nextSortOptions, 1)
+    else fetchNotes(nextSortOptions, 1)
+  }
+
+  const handlePageChange = (page) => {
+    if (isSearching) searchNotes(searchTerm, sortOptions, page)
+    else fetchNotes(sortOptions, page)
   }
 
   const handleDelete = async (id) => {
     try {
       clearRateLimit()
       await deleteNote(id)
-      if (pagination.items.length === 1 && pagination.page > 1) {
-        setCurrentPage(pagination.page - 1)
-      }
       toast.success('Note deleted successfully')
     } catch (error) {
       if (handleRateLimitError(error)) return
@@ -200,10 +200,10 @@ function HomePage() {
           >
             {isSearching ? 'Unable to search notes right now.' : 'Unable to load notes right now.'}
           </MotionDiv>
-        ) : pagination.total ? (
+        ) : displayedNotes.length ? (
           <MotionDiv layout className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence mode="popLayout">
-              {pagination.items.map((note) => (
+              {displayedNotes.map((note) => (
                 <NoteCard key={note.id} note={note} onDelete={handleDelete} />
               ))}
             </AnimatePresence>
@@ -228,19 +228,19 @@ function HomePage() {
               type="button"
               className="btn btn-sm rounded-lg"
               disabled={!pagination.hasPreviousPage}
-              onClick={() => setCurrentPage(pagination.page - 1)}
+              onClick={() => handlePageChange(pagination.page - 1)}
             >
               Previous
             </button>
             <span className="text-sm text-ink-600" aria-live="polite" aria-atomic="true">
-              Showing {pagination.startIndex + 1}-{pagination.endIndex} of {pagination.total}
+              Showing {pagination.startIndex}-{pagination.endIndex} of {pagination.total}
               {' · '}Page {pagination.page} of {pagination.totalPages}
             </span>
             <button
               type="button"
               className="btn btn-sm rounded-lg"
               disabled={!pagination.hasNextPage}
-              onClick={() => setCurrentPage(pagination.page + 1)}
+              onClick={() => handlePageChange(pagination.page + 1)}
             >
               Next
             </button>
