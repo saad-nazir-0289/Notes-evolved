@@ -4,6 +4,8 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 **Current phase:** Phase 1 - Solid CRUD
 
+**Security gate:** The current notes API has no authentication or per-user ownership. Treat deployments as single-user and trusted-only; do not store sensitive notes or expose it to untrusted users until JWT authentication and ownership enforcement are complete.
+
 ## Phase 0 - Foundation
 
 - [x] Audit the existing repository, entry points, and current project structure.
@@ -32,9 +34,9 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 - [x] Add pagination.
   - [x] Add accessible client-side page navigation for note lists and search results (12 notes per page).
   - [x] Add bounded server-side pagination and total-count metadata for larger collections, including search and sorting.
-- [ ] Add pin and archive behavior.
 - [ ] Add user authentication with JWT and hashed passwords.
 - [ ] Enforce per-user note ownership.
+- [ ] Add pin and archive behavior.
 - [ ] Improve responsive and accessible UI behavior.
 - [ ] Verify loading and empty states across all CRUD flows.
 
@@ -100,6 +102,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-20: Fixed production frontend asset resolution to derive from `server.js` instead of `process.cwd()`, so root-level startup and backend-directory startup both serve `frontend/dist`. Added path-resolution regression tests. Security audit found the notes API is still unauthenticated; JWT authentication and per-user ownership are prioritized before pin/archive.
 - 2026-11-19: Added bounded server-side pagination (12 default, 50 maximum, 1,000,000 maximum skip), matching filtered counts, page clamping after deletions, frontend page navigation for lists and search, and direct-note fetching for deep links outside the current page.
 - 2026-11-18: Added accessible client-side page navigation for sorted notes and search results, with page resets on search/sort changes and safe page adjustment after deleting the final item on a page.
 - 2026-11-17: Added allowlisted server-side sorting by creation date, update date, or title; wired five sort choices into the home-page list and search requests; added validation and regression tests. Live MongoDB-backed browser CRUD verification remains pending.
