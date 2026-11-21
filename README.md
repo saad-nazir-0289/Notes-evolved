@@ -8,6 +8,8 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Search notes by title and description
 - Sort notes by creation date, update date, or title
 - Server-side pagination for note lists and search results (12 notes by default, maximum 50 per page)
+- Account registration and login API with scrypt password hashes and signed JWT access tokens
+- Rate-limited authentication endpoints and a protected current-user endpoint
 - Responsive React interface with loading, empty, and toast feedback states
 - MongoDB persistence with Mongoose
 - Express API with request rate limiting
@@ -18,6 +20,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 
 - **Frontend:** React, Vite, React Router, Axios, Tailwind CSS, DaisyUI, Framer Motion
 - **Backend:** Node.js, Express, MongoDB, Mongoose
+- **Authentication:** Node.js scrypt password hashing and HS256 JWT access tokens
 - **Rate limiting:** Upstash Redis when configured, otherwise a bounded in-memory fallback
 
 ## Project structure
@@ -40,7 +43,8 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 │   └── package.json
 ├── .env.example
 ├── package.json
-└── README.md
+├── README.md
+└── ROADMAP.md
 ```
 
 ## Requirements
@@ -49,7 +53,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - npm
 - MongoDB, local or hosted
 
-Upstash Redis is optional. Without both Upstash environment variables, the backend applies a per-process in-memory limit of 100 requests per client per minute. This fallback is not shared between multiple server instances and its counters reset when the process restarts. For multi-instance deployments, configure Upstash.
+Upstash Redis is optional. Without both Upstash environment variables, the backend applies a per-process in-memory limit of 100 requests per client per minute for note endpoints and 10 authentication requests per client per 15 minutes. These fallbacks are not shared between multiple server instances and their counters reset when the process restarts. For multi-instance deployments, configure Upstash.
 
 ## Environment setup
 
@@ -65,7 +69,13 @@ On Windows PowerShell:
 Copy-Item .env.example backend/.env
 ```
 
-Set `MONGO_URI` to a MongoDB connection string you control. The remaining variables are documented in `.env.example`. Configure both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to enable shared Upstash rate limiting. Keep real credentials in `backend/.env`, never in source control.
+Set `MONGO_URI` to a MongoDB connection string you control. Generate a random JWT secret for authentication endpoints:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+Put the generated value in `JWT_SECRET`. The secret must contain at least 32 bytes. Configure both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to enable shared Upstash rate limiting. Keep real credentials in `backend/.env`, never in source control.
 
 ## Run locally
 
@@ -103,7 +113,23 @@ The Vite development server runs at [http://localhost:5173](http://localhost:517
 
 ## API
 
-All note endpoints return the same JSON envelope. Successful responses use `success: true`, a human-readable `message`, and a `data` field. The list endpoint returns the current page as an array and includes pagination details in `meta.pagination`.
+All endpoints use a consistent JSON envelope. Successful responses use `success: true`, a human-readable `message`, and a `data` field. Errors use `success: false` and `data: null`. Unexpected server errors return a generic message rather than internal details.
+
+### Authentication API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Create an account with a normalized email and a scrypt password hash |
+| POST | `/api/auth/login` | Verify credentials and return a signed JWT access token |
+| GET | `/api/auth/me` | Validate a bearer token and return the current account |
+
+Registration requires a valid email and a password between 12 and 128 characters. Login accepts passwords between 1 and 128 characters so existing credentials are not rejected by registration policy. Passwords are never returned by the API. Access tokens use HS256, include issuer and audience claims, and expire after 60 minutes. Configure `JWT_SECRET` before using these endpoints. Register and login share a limit of 10 attempts per client per 15 minutes.
+
+**Security gate:** The notes CRUD endpoints below are not yet protected by authentication and notes do not yet have an owner. The frontend login/session flow is also not integrated. Do not expose this application to untrusted users or store sensitive notes until note-route protection and per-user ownership are complete. Existing notes need an explicit ownership migration before ownership enforcement is enabled.
+
+### Notes API
+
+The list endpoint returns the current page as an array and includes pagination details in `meta.pagination`.
 
 ```json
 {
@@ -126,8 +152,6 @@ All note endpoints return the same JSON envelope. Successful responses use `succ
   }
 }
 ```
-
-Errors use the same top-level keys with `success: false` and `data: null`. Unexpected server errors return a generic message rather than internal details.
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |

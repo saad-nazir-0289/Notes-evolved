@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import path from "path";
+import authRoutes from "./routes/authRoutes.js";
 import notesRoutes from "./routes/notesRoutes.js";
 import connectDB from "./config/db.js";
 import rateLimiter from "./middleware/rateLimiter.js";
@@ -21,6 +22,7 @@ if (process.env.NODE_ENV !== "production") {
   );
 }
 
+app.use("/api/auth", authRoutes);
 app.use("/api/notes", rateLimiter, notesRoutes);
 app.use("/api", notFoundHandler);
 

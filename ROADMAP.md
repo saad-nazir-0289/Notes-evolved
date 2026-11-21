@@ -4,7 +4,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 **Current phase:** Phase 1 - Solid CRUD
 
-**Security gate:** The current notes API has no authentication or per-user ownership. Treat deployments as single-user and trusted-only; do not store sensitive notes or expose it to untrusted users until JWT authentication and ownership enforcement are complete.
+**Security gate:** Authentication API endpoints are now available, but the notes CRUD API is still unauthenticated and notes have no per-user owner. The frontend login/session flow is not integrated. Treat deployments as single-user and trusted-only; do not store sensitive notes or expose the app to untrusted users until every note route requires authentication and every database operation is scoped to the authenticated owner. Existing notes need an explicit ownership migration before enforcement is enabled.
 
 ## Phase 0 - Foundation
 
@@ -35,7 +35,15 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
   - [x] Add accessible client-side page navigation for note lists and search results (12 notes per page).
   - [x] Add bounded server-side pagination and total-count metadata for larger collections, including search and sorting.
 - [ ] Add user authentication with JWT and hashed passwords.
+  - [x] Add a User schema with normalized, unique email addresses and a non-query-selected password hash.
+  - [x] Add registration and login endpoints with 12-character minimum registration passwords and scrypt hashing.
+  - [x] Issue and verify HS256 JWT access tokens with issuer, audience, and 60-minute expiry claims.
+  - [x] Add a protected `GET /api/auth/me` endpoint and rate-limit registration/login attempts.
+  - [ ] Integrate login, registration, and token persistence into the frontend.
+  - [ ] Require authentication on every note CRUD route.
 - [ ] Enforce per-user note ownership.
+  - [ ] Add an owner reference to notes and scope every read, count, update, and delete to the authenticated owner.
+  - [ ] Define and test a safe migration for existing ownerless notes before enabling ownership enforcement.
 - [ ] Add pin and archive behavior.
 - [ ] Improve responsive and accessible UI behavior.
 - [ ] Verify loading and empty states across all CRUD flows.
@@ -102,6 +110,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 ## Changelog
 
+- 2026-11-21: Added backend account registration/login/current-user endpoints, normalized unique email storage, scrypt password hashes, HS256 access tokens with issuer/audience/expiry validation, strict credential validation, timing-safe password checks, dummy-hash verification for unknown emails, and a dedicated 10-attempt/15-minute authentication limiter with optional shared Upstash backing. Note CRUD routes remain unauthenticated until frontend session integration and per-user ownership are completed; the security gate remains active.
 - 2026-11-20: Fixed production frontend asset resolution to derive from `server.js` instead of `process.cwd()`, so root-level startup and backend-directory startup both serve `frontend/dist`. Added path-resolution regression tests. Security audit found the notes API is still unauthenticated; JWT authentication and per-user ownership are prioritized before pin/archive.
 - 2026-11-19: Added bounded server-side pagination (12 default, 50 maximum, 1,000,000 maximum skip), matching filtered counts, page clamping after deletions, frontend page navigation for lists and search, and direct-note fetching for deep links outside the current page.
 - 2026-11-18: Added accessible client-side page navigation for sorted notes and search results, with page resets on search/sort changes and safe page adjustment after deleting the final item on a page.
