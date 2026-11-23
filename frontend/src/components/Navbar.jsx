@@ -1,9 +1,17 @@
-import { NotebookText, SquarePen } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { NotebookText, SquarePen, LogOut } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function Navbar() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const isHome = pathname === '/'
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header className="border-b border-slate-200/80 bg-white/80 shadow-[0_8px_30px_rgba(148,163,184,0.08)] backdrop-blur-xl">
@@ -19,13 +27,20 @@ function Navbar() {
           </div>
         </Link>
 
-        {isHome ? (
-          <Link to="/create" className="primary-btn rounded-[14px] px-3 font-semibold sm:px-4">
-            <SquarePen size={14} />
-            <span className="hidden sm:inline">Create New Note</span>
-            <span className="sm:hidden">New Note</span>
-          </Link>
-        ) : null}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="hidden max-w-48 truncate text-xs text-ink-500 md:block">{user?.email}</span>
+          {isHome ? (
+            <Link to="/create" className="primary-btn rounded-[14px] px-3 font-semibold sm:px-4">
+              <SquarePen size={14} />
+              <span className="hidden sm:inline">Create New Note</span>
+              <span className="sm:hidden">New Note</span>
+            </Link>
+          ) : null}
+          <button type="button" className="secondary-btn rounded-[14px] px-3" onClick={handleLogout}>
+            <LogOut size={14} />
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
+        </div>
       </div>
     </header>
   )

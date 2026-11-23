@@ -8,11 +8,13 @@ import {
 } from '../api/notes'
 import { normalizeNotePagination } from '../utils/notePagination'
 import { useRateLimit } from './useRateLimit'
+import { useAuth } from './AuthContext'
 
 const DEFAULT_SORT_OPTIONS = { sortBy: 'createdAt', sortOrder: 'desc' }
 const EMPTY_PAGINATION = normalizeNotePagination(null, [])
 
 export function NotesProvider({ children }) {
+  const { status: authStatus, sessionVersion } = useAuth()
   const [notes, setNotes] = useState([])
   const [notesPagination, setNotesPagination] = useState(EMPTY_PAGINATION)
   const [loading, setLoading] = useState(true)
@@ -24,9 +26,25 @@ export function NotesProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOptions, setSortOptions] = useState(DEFAULT_SORT_OPTIONS)
   const hasFetchedRef = useRef(false)
+  const sessionVersionRef = useRef(sessionVersion)
   const listRequestRef = useRef(0)
   const searchRequestRef = useRef(0)
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
+
+  const resetNotesState = useCallback(() => {
+    listRequestRef.current += 1
+    searchRequestRef.current += 1
+    hasFetchedRef.current = false
+    setNotes([])
+    setNotesPagination(EMPTY_PAGINATION)
+    setLoading(false)
+    setFetchError(null)
+    setSearchResults(null)
+    setSearchPagination(EMPTY_PAGINATION)
+    setSearchLoading(false)
+    setSearchError(null)
+    setSearchQuery('')
+  }, [])
 
   const fetchNotes = useCallback(async (nextSortOptions = sortOptions, page = 1) => {
     const requestId = ++listRequestRef.current
@@ -57,10 +75,19 @@ export function NotesProvider({ children }) {
   }, [clearRateLimit, handleRateLimitError, sortOptions])
 
   useEffect(() => {
-    if (hasFetchedRef.current) return
-    hasFetchedRef.current = true
-    fetchNotes()
-  }, [fetchNotes])
+    const sessionChanged = sessionVersionRef.current !== sessionVersion
+    if (sessionChanged) {
+      sessionVersionRef.current = sessionVersion
+      resetNotesState()
+    }
+
+    if (authStatus === 'authenticated' && !hasFetchedRef.current) {
+      hasFetchedRef.current = true
+      fetchNotes()
+    } else if (authStatus === 'unauthenticated' && !sessionChanged) {
+      resetNotesState()
+    }
+  }, [authStatus, sessionVersion, fetchNotes, resetNotesState])
 
   const searchNotes = useCallback(async (query, nextSortOptions = sortOptions, page = 1) => {
     const requestId = ++searchRequestRef.current

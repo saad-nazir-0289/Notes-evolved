@@ -8,7 +8,8 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Search notes by title and description
 - Sort notes by creation date, update date, or title
 - Server-side pagination for note lists and search results (12 notes by default, maximum 50 per page)
-- Account registration and login API with scrypt password hashes and signed JWT access tokens
+- Account registration and login with scrypt password hashes and signed JWT access tokens
+- Frontend login/registration, tab-scoped session restoration, and automatic bearer-token API requests
 - Rate-limited authentication endpoints and a protected current-user endpoint
 - Responsive React interface with loading, empty, and toast feedback states
 - MongoDB persistence with Mongoose
@@ -125,7 +126,7 @@ All endpoints use a consistent JSON envelope. Successful responses use `success:
 
 Registration requires a valid email and a password between 12 and 128 characters. Login accepts passwords between 1 and 128 characters so existing credentials are not rejected by registration policy. Passwords are never returned by the API. Access tokens use HS256, include issuer and audience claims, and expire after 60 minutes. Configure `JWT_SECRET` before using these endpoints. Register and login share a limit of 10 attempts per client per 15 minutes.
 
-**Security gate:** The notes CRUD endpoints below are not yet protected by authentication and notes do not yet have an owner. The frontend login/session flow is also not integrated. Do not expose this application to untrusted users or store sensitive notes until note-route protection and per-user ownership are complete. Existing notes need an explicit ownership migration before ownership enforcement is enabled.
+**Security gate:** The notes CRUD endpoints below are not yet protected by authentication and notes do not yet have an owner. The frontend login/registration UI and tab-scoped session restoration are integrated, but they do not secure the notes API. Access tokens are stored in `sessionStorage`, which is readable by scripts running on the same origin; keep normal XSS defenses in place. Do not expose this application to untrusted users or store sensitive notes until note-route protection and per-user ownership are complete. Existing notes need an explicit ownership migration before ownership enforcement is enabled.
 
 ### Notes API
 
