@@ -2,8 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { registerNotesRoutes } from "./registerNotesRoutes.js";
 import { errorHandler } from "../middleware/errorHandler.js";
+import { signAccessToken } from "../utils/auth.js";
 
 const NOTE_ID = "507f1f77bcf86cd799439011";
+const SECRET = "test-only-secret-that-is-at-least-32-bytes";
+const TOKEN = signAccessToken("user-123", SECRET);
+const User = { findById: async (id) => ({ _id: id, email: "user@example.com" }) };
+const authOptions = { User, jwtSecret: SECRET };
 const createRouter = () => {
   const routes = new Map();
   const router = {};
@@ -12,10 +17,10 @@ const createRouter = () => {
   }
   return { router, routes };
 };
-const dispatch = (routes, method, path, { params = {}, body, query = {} } = {}) => new Promise((resolve, reject) => {
+const dispatch = (routes, method, path, { params = {}, body, query = {}, headers = { authorization: `Bearer ${TOKEN}` } } = {}) => new Promise((resolve, reject) => {
   const handlers = routes.get(`${method} ${path}`);
   assert.ok(handlers, `Expected ${method} ${path} to be registered`);
-  const req = { params, body, query };
+  const req = { params, body, query, headers };
   const res = {
     statusCode: 200,
     body: null,
@@ -82,7 +87,7 @@ const createNoteModel = () => {
 test("registered CRUD routes still complete create, read, update, list, and delete", async () => {
   const { router, routes } = createRouter();
   const Note = createNoteModel();
-  registerNotesRoutes(router, Note);
+  registerNotesRoutes(router, Note, authOptions)
   const created = await dispatch(routes, "POST", "/", { body: { title: " First note ", description: " Saved details " } });
   assert.equal(created.statusCode, 201);
   const read = await dispatch(routes, "GET", "/:id", { params: { id: NOTE_ID } });
@@ -103,7 +108,7 @@ test("registered CRUD routes still complete create, read, update, list, and dele
 test("GET / applies bounded pagination after search and sort validation", async () => {
   const { router, routes } = createRouter();
   const Note = createNoteModel();
-  registerNotesRoutes(router, Note);
+  registerNotesRoutes(router, Note, authOptions)
   for (let index = 0; index < 3; index += 1) {
     const id = `507f1f77bcf86cd79943901${index + 1}`;
     Note.records.set(id, { _id: id, title: `Note ${index + 1}`, description: "Project", createdAt: "2026-11-12T05:00:00.000Z" });
@@ -123,7 +128,7 @@ test("GET / applies bounded pagination after search and sort validation", async 
 test("registered routes reject invalid ids, write fields, and pagination queries", async () => {
   const { router, routes } = createRouter();
   const Note = createNoteModel();
-  registerNotesRoutes(router, Note);
+  registerNotesRoutes(router, Note, authOptions)
   const invalidId = await dispatch(routes, "GET", "/:id", { params: { id: "not-an-object-id" } });
   assert.equal(invalidId.statusCode, 400);
   const invalidBody = await dispatch(routes, "POST", "/", { body: { title: "Valid", description: "Valid", owner: "injected" } });
@@ -132,4 +137,25 @@ test("registered routes reject invalid ids, write fields, and pagination queries
   assert.equal(invalidPage.statusCode, 400);
   assert.equal(invalidPage.body.message, "Page must be a positive integer");
   assert.equal(Note.records.size, 0);
+});
+
+
+test("every notes CRUD route rejects missing bearer tokens before validation or database access", async () => {
+  const { router, routes } = createRouter();
+  const Note = createNoteModel();
+  registerNotesRoutes(router, Note, authOptions);
+  const requests = [
+    ["GET", "/", { query: { page: "0" } }],
+    ["GET", "/:id", { params: { id: "invalid" } }],
+    ["POST", "/", { body: null }],
+    ["PUT", "/:id", { params: { id: "invalid" }, body: null }],
+    ["DELETE", "/:id", { params: { id: "invalid" } }],
+  ];
+  for (const [method, path, request] of requests) {
+    const result = await dispatch(routes, method, path, { ...request, headers: {} });
+    assert.equal(result.statusCode, 401, `${method} ${path} must require authentication`);
+    assert.equal(result.body.message, "Authentication required");
+  }
+  assert.equal(Note.records.size, 0);
+  assert.equal(Note.calls.filter, undefined);
 });

@@ -9,6 +9,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Sort notes by creation date, update date, or title
 - Server-side pagination for note lists and search results (12 notes by default, maximum 50 per page)
 - Account registration and login with scrypt password hashes and signed JWT access tokens
+- JWT-protected note CRUD endpoints with bearer-token authentication
 - Frontend login/registration, tab-scoped session restoration, and automatic bearer-token API requests
 - Rate-limited authentication endpoints and a protected current-user endpoint
 - Responsive React interface with loading, empty, and toast feedback states
@@ -126,9 +127,11 @@ All endpoints use a consistent JSON envelope. Successful responses use `success:
 
 Registration requires a valid email and a password between 12 and 128 characters. Login accepts passwords between 1 and 128 characters so existing credentials are not rejected by registration policy. Passwords are never returned by the API. Access tokens use HS256, include issuer and audience claims, and expire after 60 minutes. Configure `JWT_SECRET` before using these endpoints. Register and login share a limit of 10 attempts per client per 15 minutes.
 
-**Security gate:** The notes CRUD endpoints below are not yet protected by authentication and notes do not yet have an owner. The frontend login/registration UI and tab-scoped session restoration are integrated, but they do not secure the notes API. Access tokens are stored in `sessionStorage`, which is readable by scripts running on the same origin; keep normal XSS defenses in place. Do not expose this application to untrusted users or store sensitive notes until note-route protection and per-user ownership are complete. Existing notes need an explicit ownership migration before ownership enforcement is enabled.
+**Security gate:** Every notes CRUD endpoint requires a valid JWT bearer token. Notes do not yet have an owner, so all authenticated accounts still share the same notes collection and can access each other's notes. Do not use this deployment for multi-user or sensitive notes until every database operation is scoped to the authenticated owner and existing ownerless notes have been safely migrated. Access tokens are stored in `sessionStorage`, which is readable by scripts running on the same origin; keep normal XSS defenses in place.
 
 ### Notes API
+
+The notes API requires an `Authorization: Bearer <access-token>` header on every endpoint. Obtain the token from registration or login. Authentication is enforced before note validation and database access.
 
 The list endpoint returns the current page as an array and includes pagination details in `meta.pagination`.
 
