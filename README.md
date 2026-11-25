@@ -10,6 +10,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Server-side pagination for note lists and search results (12 notes by default, maximum 50 per page)
 - Account registration and login with scrypt password hashes and signed JWT access tokens
 - JWT-protected note CRUD endpoints with bearer-token authentication
+- Per-user note ownership across list, search, read, create, update, and delete
 - Frontend login/registration, tab-scoped session restoration, and automatic bearer-token API requests
 - Rate-limited authentication endpoints and a protected current-user endpoint
 - Responsive React interface with loading, empty, and toast feedback states
@@ -36,6 +37,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 │   │   ├── middleware/
 │   │   ├── model/
 │   │   ├── routes/
+│   │   ├── scripts/
 │   │   ├── utils/
 │   │   └── server.js
 │   └── package.json
@@ -127,11 +129,31 @@ All endpoints use a consistent JSON envelope. Successful responses use `success:
 
 Registration requires a valid email and a password between 12 and 128 characters. Login accepts passwords between 1 and 128 characters so existing credentials are not rejected by registration policy. Passwords are never returned by the API. Access tokens use HS256, include issuer and audience claims, and expire after 60 minutes. Configure `JWT_SECRET` before using these endpoints. Register and login share a limit of 10 attempts per client per 15 minutes.
 
-**Security gate:** Every notes CRUD endpoint requires a valid JWT bearer token. Notes do not yet have an owner, so all authenticated accounts still share the same notes collection and can access each other's notes. Do not use this deployment for multi-user or sensitive notes until every database operation is scoped to the authenticated owner and existing ownerless notes have been safely migrated. Access tokens are stored in `sessionStorage`, which is readable by scripts running on the same origin; keep normal XSS defenses in place.
+**Security gate:** Every notes CRUD endpoint requires a valid JWT bearer token, and every list, count, search, read, update, and delete query is scoped to the authenticated owner. New notes receive their owner from the verified session, never from request input. Notes created before this change remain ownerless and are intentionally invisible until the migration below is run. Automatic migration is permitted only when exactly one account exists; with multiple accounts, legacy ownership cannot be inferred and the tool refuses to assign notes. Back up the database and complete the appropriate migration before deploying this version to an existing database. Access tokens are stored in `sessionStorage`, which is readable by scripts running on the same origin; keep normal XSS defenses in place.
+
+### Migrating existing notes
+
+Notes created before per-user ownership was added have no owner and are not visible to any account. Choose the existing account that should receive those legacy notes. The migration defaults to a read-only dry run and only assigns documents whose `owner` is missing or `null`; it never changes an already-owned note.
+
+Before applying it, take a verified MongoDB backup and stop the running backend so no notes are created while the one-time migration is in progress. From the `backend/` directory, run a dry run first:
+
+```bash
+npm run migrate:legacy-notes -- --owner=you@example.com
+```
+
+Review the target account, matched note count, and `safeToApply` result. Automatic assignment is allowed only when exactly one registered account exists. If the database has multiple accounts, do not choose one arbitrarily: the earlier shared-notes period means ownership cannot be inferred, so the tool refuses to apply and those notes need a separately verified manual mapping.
+
+Only when the dry run reports `safeToApply: true` and the account/count are correct, apply with an explicit matching confirmation:
+
+```bash
+npm run migrate:legacy-notes -- --owner=you@example.com --apply --confirm-owner=you@example.com
+```
+
+The command verifies that the target account exists and checks that no ownerless notes remain after the update. Keep the backend stopped until it completes successfully, then deploy/start the ownership-enforcing version. If the selected account is wrong, restore from the verified backup.
 
 ### Notes API
 
-The notes API requires an `Authorization: Bearer <access-token>` header on every endpoint. Obtain the token from registration or login. Authentication is enforced before note validation and database access.
+The notes API requires an `Authorization: Bearer <access-token>` header on every endpoint. Obtain the token from registration or login. Authentication is enforced before note validation and database access, and all database operations are scoped to that account's owner ID.
 
 The list endpoint returns the current page as an array and includes pagination details in `meta.pagination`.
 

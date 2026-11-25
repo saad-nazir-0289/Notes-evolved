@@ -4,7 +4,7 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 
 **Current phase:** Phase 1 - Solid CRUD
 
-**Security gate:** Every notes CRUD route now requires a valid JWT bearer token, but notes still have no per-user owner. All authenticated accounts therefore share the same notes collection. Do not use the app for multi-user or sensitive notes until every database operation is scoped to the authenticated owner and existing ownerless notes have been safely migrated.
+**Security gate:** Notes CRUD requires a valid JWT and scopes every read, list/count/search, update, and delete to the authenticated owner. New notes receive the owner from the verified session. Existing ownerless notes remain invisible until migrated. Automatic migration is safe only when exactly one account exists; if multiple accounts exist, ownership cannot be inferred and those records require verified manual mapping.
 
 ## Phase 0 - Foundation
 
@@ -42,9 +42,12 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
   - [x] Integrate login, registration, and tab-scoped token persistence into the frontend.
   - [x] Restore sessions through `GET /api/auth/me`, attach bearer tokens to API requests, and clear in-memory note state on logout/session changes.
   - [x] Require authentication on every note CRUD route.
-- [ ] Enforce per-user note ownership.
-  - [ ] Add an owner reference to notes and scope every read, count, update, and delete to the authenticated owner.
-  - [ ] Define and test a safe migration for existing ownerless notes before enabling ownership enforcement.
+- [x] Enforce per-user note ownership in the application.
+  - [x] Add a required Note.owner reference and assign it from the authenticated user on creation.
+  - [x] Scope list, filtered count/search, single-note read, update, and delete queries to the authenticated owner; return not-found for another user's note ID.
+  - [x] Add a dry-run-first migration that assigns only missing/null owners when exactly one registered account exists, and requires a matching confirmation before writes.
+  - [ ] If multiple accounts exist, manually map ownerless notes using verified ownership evidence; do not infer or bulk-assign ownership.
+  - [ ] Execute the migration on the target database after a verified backup and while the backend is stopped, before deploying this version to existing data.
 - [ ] Add pin and archive behavior.
 - [ ] Improve responsive and accessible UI behavior.
 - [ ] Verify loading and empty states across all CRUD flows.
@@ -110,6 +113,8 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 - [ ] Publish a strong README and architecture documentation.
 
 ## Changelog
+
+- 2026-11-25: Added required per-user note ownership, owner-scoped list/count/search/read/update/delete queries, fail-closed controller checks, cross-account isolation tests, and a dry-run-first legacy migration requiring explicit account selection and confirmation. Automatic migration refuses when multiple accounts exist because legacy ownership cannot be inferred. The migration has not been run against a live database; back up MongoDB, stop the backend, dry-run, then apply only when the tool reports it is safe.
 
 - 2026-11-24: Required a valid JWT bearer token on all five note CRUD routes, with authentication running before request validation and database access. Authenticated accounts still share the existing notes collection; per-user ownership and a safe migration remain the next security gate.
 

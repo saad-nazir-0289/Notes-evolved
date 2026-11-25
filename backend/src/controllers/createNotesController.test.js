@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createNotesController } from "./createNotesController.js";
 
+const USER_ID = "507f1f77bcf86cd799439011";
 const note = {
-  _id: "507f1f77bcf86cd799439011",
+  _id: "507f1f77bcf86cd799439012",
+  owner: USER_ID,
   title: "Project",
   description: "Project details",
   createdAt: "2026-11-09T08:00:00.000Z",
@@ -23,15 +25,16 @@ const createModel = ({ total = 25, results = [note] } = {}) => {
       };
       return query;
     },
-    findById: async (id) => { calls.findById = id; return note; },
-    findByIdAndUpdate: async (id, body, options) => { calls.update = { id, body, options }; return { ...note, ...body }; },
+    findOne: async (filter) => { calls.findOne = filter; return note; },
+    findOneAndUpdate: async (filter, body, options) => { calls.update = { filter, body, options }; return { ...note, ...body }; },
     create: async (body) => { calls.create = body; return note; },
-    findByIdAndDelete: async (id) => { calls.delete = id; return note; },
+    findOneAndDelete: async (filter) => { calls.delete = filter; return note; },
   };
   return { model, calls };
 };
 
 const invoke = async (handler, req = {}) => {
+  const request = { user: { id: USER_ID }, ...req };
   const response = {
     statusCode: null,
     body: null,
@@ -39,11 +42,11 @@ const invoke = async (handler, req = {}) => {
     json(body) { this.body = body; return this; },
   };
   let error;
-  await handler(req, response, (nextError) => { error = nextError; });
+  await handler(request, response, (nextError) => { error = nextError; });
   return { response, error };
 };
 
-test("list endpoint returns notes and bounded pagination metadata", async () => {
+test("list endpoint scopes both count and page queries to the authenticated owner", async () => {
   const { model, calls } = createModel();
   const { response, error } = await invoke(createNotesController(model).getNotes);
   assert.equal(error, undefined);
@@ -53,10 +56,11 @@ test("list endpoint returns notes and bounded pagination metadata", async () => 
   assert.deepEqual(calls.sort, { createdAt: -1, _id: -1 });
   assert.equal(calls.skip, 0);
   assert.equal(calls.limit, 12);
-  assert.deepEqual(calls.countFilter, {});
+  assert.deepEqual(calls.countFilter, { owner: USER_ID });
+  assert.deepEqual(calls.filter, { owner: USER_ID });
 });
 
-test("list endpoint applies the same search filter to count and page queries", async () => {
+test("list endpoint combines owner scope with search for count and page queries", async () => {
   const { model, calls } = createModel({ total: 40 });
   const { response } = await invoke(createNotesController(model).getNotes, {
     noteSearchTerm: "project",
@@ -66,6 +70,7 @@ test("list endpoint applies the same search filter to count and page queries", a
   assert.equal(response.statusCode, 200);
   assert.deepEqual(calls.filter, calls.countFilter);
   assert.deepEqual(calls.filter, {
+    owner: USER_ID,
     $or: [
       { title: { $regex: "project", $options: "i" } },
       { description: { $regex: "project", $options: "i" } },
@@ -77,71 +82,60 @@ test("list endpoint applies the same search filter to count and page queries", a
   assert.deepEqual(response.body.meta.pagination, { page: 2, limit: 10, total: 40, totalPages: 4 });
 });
 
-test("list endpoint clamps pages after the collection shrinks", async () => {
+test("list endpoint clamps pages after the owner's collection shrinks", async () => {
   const { model, calls } = createModel({ total: 13 });
-  const { response } = await invoke(createNotesController(model).getNotes, {
-    notePagination: { page: 99, limit: 12 },
-  });
+  const { response } = await invoke(createNotesController(model).getNotes, { notePagination: { page: 99, limit: 12 } });
   assert.equal(calls.skip, 12);
   assert.deepEqual(response.body.meta.pagination, { page: 2, limit: 12, total: 13, totalPages: 2 });
 });
 
-test("list endpoint handles empty collections without invalid page numbers", async () => {
+test("list endpoint handles an empty owner collection", async () => {
   const { model, calls } = createModel({ total: 0, results: [] });
-  const { response } = await invoke(createNotesController(model).getNotes, {
-    notePagination: { page: 5, limit: 12 },
-  });
+  const { response } = await invoke(createNotesController(model).getNotes, { notePagination: { page: 5, limit: 12 } });
   assert.deepEqual(response.body.data, []);
   assert.equal(calls.skip, 0);
   assert.deepEqual(response.body.meta.pagination, { page: 1, limit: 12, total: 0, totalPages: 0 });
 });
 
-test("single-note endpoint returns the standard success envelope", async () => {
-  const { model } = createModel();
+test("single-note reads include both note id and authenticated owner", async () => {
+  const { model, calls } = createModel();
   const { response, error } = await invoke(createNotesController(model).getNote, { params: { id: note._id } });
   assert.equal(error, undefined);
   assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls.findOne, { _id: note._id, owner: USER_ID });
   assert.deepEqual(response.body.data, note);
 });
 
-test("create, update, and delete preserve their response contracts", async () => {
+test("create, update, and delete preserve response contracts and enforce owner scope", async () => {
   const { model, calls } = createModel();
   const controllers = createNotesController(model);
   const createBody = { title: "Project", description: "Details" };
   const created = await invoke(controllers.createNote, { body: createBody });
   assert.equal(created.response.statusCode, 201);
-  assert.deepEqual(created.response.body, {
-    success: true,
-    message: "Note created successfully",
-    data: note,
-  });
-  assert.deepEqual(calls.create, createBody);
+  assert.deepEqual(calls.create, { ...createBody, owner: USER_ID });
+  assert.deepEqual(created.response.body, { success: true, message: "Note created successfully", data: note });
 
   const updateBody = { title: "Renamed" };
   const updated = await invoke(controllers.updateNote, { params: { id: note._id }, body: updateBody });
   assert.equal(updated.response.statusCode, 200);
-  assert.deepEqual(updated.response.body, {
-    success: true,
-    message: "Note updated successfully",
-    data: { ...note, ...updateBody },
+  assert.deepEqual(calls.update, {
+    filter: { _id: note._id, owner: USER_ID },
+    body: updateBody,
+    options: { new: true, runValidators: true },
   });
-  assert.deepEqual(calls.update.options, { new: true, runValidators: true });
+  assert.deepEqual(updated.response.body, { success: true, message: "Note updated successfully", data: { ...note, ...updateBody } });
 
   const deleted = await invoke(controllers.deleteNote, { params: { id: note._id } });
   assert.equal(deleted.response.statusCode, 200);
-  assert.deepEqual(deleted.response.body, {
-    success: true,
-    message: "Note deleted successfully",
-    data: null,
-  });
-
+  assert.deepEqual(calls.delete, { _id: note._id, owner: USER_ID });
+  assert.deepEqual(deleted.response.body, { success: true, message: "Note deleted successfully", data: null });
 });
 
-test("read, update, and delete return not-found errors for missing notes", async () => {
+test("read, update, and delete return not-found errors for notes outside the owner scope", async () => {
   const { model } = createModel();
-  model.findById = async () => null;
-  model.findByIdAndUpdate = async () => null;
-  model.findByIdAndDelete = async () => null;
+  model.findOne = async () => null;
+  model.findOneAndUpdate = async () => null;
+  model.findOneAndDelete = async () => null;
   const controllers = createNotesController(model);
   const cases = [
     [controllers.getNote, { params: { id: note._id } }],
@@ -155,16 +149,34 @@ test("read, update, and delete return not-found errors for missing notes", async
   }
 });
 
-test("forwards database failures from list and CRUD operations", async () => {
+test("controllers fail closed when the authenticated owner is missing", async () => {
+  const { model, calls } = createModel();
+  const controllers = createNotesController(model);
+  const cases = [
+    [controllers.getNotes, {}],
+    [controllers.getNote, { params: { id: note._id } }],
+    [controllers.createNote, { body: { title: "A", description: "B" } }],
+    [controllers.updateNote, { params: { id: note._id }, body: { title: "Renamed" } }],
+    [controllers.deleteNote, { params: { id: note._id } }],
+  ];
+  for (const [handler, request] of cases) {
+    const { response, error } = await invoke(handler, { ...request, user: null });
+    assert.equal(response.statusCode, null);
+    assert.equal(error.status, 401);
+  }
+  assert.deepEqual(calls, {});
+});
+
+test("forwards database failures from list and owner-scoped CRUD operations", async () => {
   const databaseError = new Error("database unavailable");
   const query = { sort() { return query; }, skip() { return query; }, limit: async () => { throw databaseError; } };
   const model = {
     countDocuments: async () => 1,
     find: () => query,
-    findById: async () => { throw databaseError; },
-    findByIdAndUpdate: async () => { throw databaseError; },
+    findOne: async () => { throw databaseError; },
+    findOneAndUpdate: async () => { throw databaseError; },
     create: async () => { throw databaseError; },
-    findByIdAndDelete: async () => { throw databaseError; },
+    findOneAndDelete: async () => { throw databaseError; },
   };
   const controllers = createNotesController(model);
   const cases = [
