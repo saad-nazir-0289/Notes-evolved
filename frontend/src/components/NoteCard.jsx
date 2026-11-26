@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Pin, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatNoteDate } from '../utils/date'
 
 const MotionArticle = motion.article
 const MotionDiv = motion.div
 
-function NoteCard({ note, onDelete }) {
+function NoteCard({ note, onDelete, onTogglePin }) {
   return (
     <MotionArticle
       layout
@@ -31,6 +31,20 @@ function NoteCard({ note, onDelete }) {
         <span className="text-xs font-medium text-ink-500 sm:text-sm">{formatNoteDate(note.createdAt)}</span>
 
         <div className="flex items-center gap-2">
+          <MotionDiv whileTap={{ scale: 0.92 }}>
+            <button
+              type="button"
+              className={note.isPinned
+                ? 'btn btn-ghost btn-xs rounded-lg text-brand-700 hover:bg-brand-50'
+                : 'btn btn-ghost btn-xs rounded-lg text-ink-700 hover:bg-brand-50 hover:text-brand-700'}
+              onClick={() => onTogglePin(note)}
+              aria-label={note.isPinned ? `Unpin ${note.title}` : `Pin ${note.title}`}
+              aria-pressed={note.isPinned}
+              title={note.isPinned ? 'Unpin note' : 'Pin note'}
+            >
+              <Pin size={14} fill={note.isPinned ? 'currentColor' : 'none'} />
+            </button>
+          </MotionDiv>
           <MotionDiv whileTap={{ scale: 0.92 }}>
             <Link
               to={`/notes/${note.id}`}

@@ -7,6 +7,7 @@ A MERN stack notes application with full CRUD functionality and a responsive UI,
 - Create, view, edit, and delete notes
 - Search notes by title and description
 - Sort notes by creation date, update date, or title
+- Pin notes to keep them above unpinned notes in lists and search results
 - Server-side pagination for note lists and search results (12 notes by default, maximum 50 per page)
 - Account registration and login with scrypt password hashes and signed JWT access tokens
 - JWT-protected note CRUD endpoints with bearer-token authentication
@@ -165,7 +166,8 @@ The list endpoint returns the current page as an array and includes pagination d
     {
       "_id": "507f1f77bcf86cd799439011",
       "title": "Project",
-      "description": "Project details"
+      "description": "Project details",
+      "isPinned": false
     }
   ],
   "meta": {
@@ -187,12 +189,12 @@ The list endpoint returns the current page as an array and includes pagination d
 | GET | `/api/notes?sortBy=title&sortOrder=asc&page=1&limit=12` | Combine allowlisted sorting and pagination |
 | GET | `/api/notes/:id` | Read one note |
 | POST | `/api/notes` | Create a note |
-| PUT | `/api/notes/:id` | Update a note |
+| PUT | `/api/notes/:id` | Update a note title, description, or pin state |
 | DELETE | `/api/notes/:id` | Delete a note |
 
 The `page` parameter must be a positive integer. `limit` defaults to 12 and is capped at 50. Requests whose calculated offset exceeds 1,000,000 are rejected to keep deep-offset queries bounded. If a requested page becomes out of range after records are removed, the API clamps it to the last available page. The total count uses the same search filter as the returned page.
 
-The sort field and direction are allowlisted and validated before the database query. Supported fields are `createdAt`, `updatedAt`, and `title`; directions are `asc` and `desc`. A matching `_id` tie-breaker keeps results deterministic when primary sort values are equal.
+The sort field and direction are allowlisted and validated before the database query. Supported fields are `createdAt`, `updatedAt`, and `title`; directions are `asc` and `desc`. Pinned notes always appear before unpinned notes, while the selected sort and `_id` tie-breaker order notes within each group. Update pin state with `PUT /api/notes/:id` and a boolean body such as `{"isPinned":true}`; pin state is accepted only on partial updates.
 
 ## Privacy and AI roadmap
 

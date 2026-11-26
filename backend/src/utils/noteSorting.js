@@ -8,5 +8,5 @@ export const createNoteSort = (
 ) => {
   const field = NOTE_SORT_FIELDS.includes(sortBy) ? sortBy : DEFAULT_NOTE_SORT.sortBy;
   const direction = sortOrder === "asc" ? 1 : -1;
-  return { [field]: direction, _id: direction };
+  return { isPinned: -1, [field]: direction, _id: direction };
 };

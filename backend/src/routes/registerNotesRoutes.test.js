@@ -74,7 +74,7 @@ const createNoteModel = () => {
         skip(skip) { calls.skip = skip; return query; },
         limit(limit) {
           calls.limit = limit;
-          const [field, direction] = Object.entries(calls.sort ?? { createdAt: -1 }).find(([key]) => key !== "_id") ?? ["createdAt", -1];
+          const [field, direction] = Object.entries(calls.sort ?? { createdAt: -1 }).find(([key]) => !["_id", "isPinned"].includes(key)) ?? ["createdAt", -1];
           const sorted = [...records.values()].filter((record) => matchesFilter(record, filter))
             .sort((a, b) => String(a[field] ?? "").localeCompare(String(b[field] ?? "")) * direction);
           return Promise.resolve(sorted.slice(calls.skip, calls.skip + limit));

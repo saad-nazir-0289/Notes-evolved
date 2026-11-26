@@ -53,7 +53,7 @@ test("list endpoint scopes both count and page queries to the authenticated owne
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.body.data, [note]);
   assert.deepEqual(response.body.meta.pagination, { page: 1, limit: 12, total: 25, totalPages: 3 });
-  assert.deepEqual(calls.sort, { createdAt: -1, _id: -1 });
+  assert.deepEqual(calls.sort, { isPinned: -1, createdAt: -1, _id: -1 });
   assert.equal(calls.skip, 0);
   assert.equal(calls.limit, 12);
   assert.deepEqual(calls.countFilter, { owner: USER_ID });
@@ -64,7 +64,7 @@ test("list endpoint combines owner scope with search for count and page queries"
   const { model, calls } = createModel({ total: 40 });
   const { response } = await invoke(createNotesController(model).getNotes, {
     noteSearchTerm: "project",
-    noteSort: { title: 1, _id: 1 },
+    noteSort: { isPinned: -1, title: 1, _id: 1 },
     notePagination: { page: 2, limit: 10 },
   });
   assert.equal(response.statusCode, 200);
@@ -76,7 +76,7 @@ test("list endpoint combines owner scope with search for count and page queries"
       { description: { $regex: "project", $options: "i" } },
     ],
   });
-  assert.deepEqual(calls.sort, { title: 1, _id: 1 });
+  assert.deepEqual(calls.sort, { isPinned: -1, title: 1, _id: 1 });
   assert.equal(calls.skip, 10);
   assert.equal(calls.limit, 10);
   assert.deepEqual(response.body.meta.pagination, { page: 2, limit: 10, total: 40, totalPages: 4 });

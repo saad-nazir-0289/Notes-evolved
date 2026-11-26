@@ -49,6 +49,8 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
   - [ ] If multiple accounts exist, manually map ownerless notes using verified ownership evidence; do not infer or bulk-assign ownership.
   - [ ] Execute the migration on the target database after a verified backup and while the backend is stopped, before deploying this version to existing data.
 - [ ] Add pin and archive behavior.
+  - [x] Pin and unpin notes through owner-scoped updates; pinned notes appear first in lists and search results.
+  - [ ] Archive and restore notes through owner-scoped filters and controls.
 - [ ] Improve responsive and accessible UI behavior.
 - [ ] Verify loading and empty states across all CRUD flows.
 
@@ -113,6 +115,8 @@ Product direction: evolve the MERN notes app into a privacy-conscious AI Second 
 - [ ] Publish a strong README and architecture documentation.
 
 ## Changelog
+
+- 2026-11-26: Added a default-false pin flag, strict boolean-only pin updates, pinned-first ordering across note lists and searches, an accessible card-level pin/unpin control, regression tests, and API documentation. Archive/restore behavior remains the next feature increment. The legacy owner migration still requires a verified database backup and an offline migration window before deployment to existing data.
 
 - 2026-11-25: Added required per-user note ownership, owner-scoped list/count/search/read/update/delete queries, fail-closed controller checks, cross-account isolation tests, and a dry-run-first legacy migration requiring explicit account selection and confirmation. Automatic migration refuses when multiple accounts exist because legacy ownership cannot be inferred. The migration has not been run against a live database; back up MongoDB, stop the backend, dry-run, then apply only when the tool reports it is safe.
 

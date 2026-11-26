@@ -26,6 +26,7 @@ function HomePage() {
     searchError,
     searchNotes,
     deleteNote,
+    updateNote,
   } = useNotes()
   const { clearRateLimit, handleRateLimitError } = useRateLimit()
   const [searchTerm, setSearchTerm] = useState('')
@@ -107,6 +108,17 @@ function HomePage() {
     } catch (error) {
       if (handleRateLimitError(error)) return
       toast.error('Unable to delete note')
+    }
+  }
+
+  const handleTogglePin = async (note) => {
+    try {
+      clearRateLimit()
+      await updateNote(note.id, { isPinned: !note.isPinned })
+      toast.success(note.isPinned ? 'Note unpinned' : 'Note pinned')
+    } catch (error) {
+      if (handleRateLimitError(error)) return
+      toast.error('Unable to update pin')
     }
   }
 
@@ -204,7 +216,7 @@ function HomePage() {
           <MotionDiv layout className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AnimatePresence mode="popLayout">
               {displayedNotes.map((note) => (
-                <NoteCard key={note.id} note={note} onDelete={handleDelete} />
+                <NoteCard key={note.id} note={note} onDelete={handleDelete} onTogglePin={handleTogglePin} />
               ))}
             </AnimatePresence>
           </MotionDiv>

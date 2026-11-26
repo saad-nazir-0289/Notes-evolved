@@ -5,6 +5,7 @@ const normalizeNote = (note) => ({
     id: note._id,
     title: note.title,
     description: note.description,
+    isPinned: note.isPinned === true,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,
 })

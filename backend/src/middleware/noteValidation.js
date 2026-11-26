@@ -82,7 +82,7 @@ export const validateNoteBody = ({ partial = false } = {}) => (req, _res, next) 
     return next(badRequest("Request body must be a JSON object"));
   }
   const fields = Object.keys(body);
-  const allowedFields = new Set(["title", "description"]);
+  const allowedFields = new Set(partial ? ["title", "description", "isPinned"] : ["title", "description"]);
   const unsupportedField = fields.find((field) => !allowedFields.has(field));
   if (unsupportedField) {
     return next(badRequest(`Unsupported note field: ${unsupportedField}`));
@@ -96,6 +96,13 @@ export const validateNoteBody = ({ partial = false } = {}) => (req, _res, next) 
   for (const field of requiredFields) {
     if (!Object.prototype.hasOwnProperty.call(body, field)) {
       return next(badRequest(`${field} is required`));
+    }
+    if (field === "isPinned") {
+      if (typeof body[field] !== "boolean") {
+        return next(badRequest("isPinned must be a boolean"));
+      }
+      normalizedBody.isPinned = body.isPinned;
+      continue;
     }
     if (typeof body[field] !== "string") {
       return next(badRequest(`${field} must be a string`));
